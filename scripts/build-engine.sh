@@ -15,9 +15,11 @@ gomobile init
 
 mkdir -p "$ROOT/app/libs"
 # Keep the targets in sync with abiFilters in app/build.gradle.kts.
+# -checklinkname=0: github.com/wlynxg/anet (via Xray-core → pion/stun) uses
+# //go:linkname into net, which Go ≥ 1.23 refuses to link without it.
 gomobile bind -v \
     -target android/arm64,android/arm,android/amd64 \
     -androidapi 26 \
-    -trimpath -ldflags "-s -w -buildid=" \
+    -trimpath -ldflags "-s -w -buildid= -checklinkname=0" \
     -o "$ROOT/app/libs/engine.aar" .
 echo "built $ROOT/app/libs/engine.aar"
