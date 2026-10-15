@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenVPN → VLESS</string>
+    <string name="ovpn_profile">OpenVPN profile (.ovpn)</string>
+    <string name="import_profile">Import .ovpn file</string>
+    <string name="username">OpenVPN username (if required)</string>
+    <string name="password">OpenVPN password</string>
+    <string name="vless_link">VLESS link (vless://…) or Xray JSON config</string>
+    <string name="connect">Connect</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="notification_channel">VPN status</string>
+</resources>
