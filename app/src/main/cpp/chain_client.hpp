@@ -14,12 +14,41 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <sstream>
 #include <string>
 #include <vector>
 
 #include <ovpncli.hpp>
 
 namespace chain {
+
+// OpenVPN 3's mbed TLS backend caps tls-version-min at 1.2 when parsing, so it
+// rejects "tls-version-min 1.3" before connecting ("unrecognized TLS
+// version"), although mbed TLS itself negotiates TLS 1.3. OpenVPN Access
+// Server writes that line into its profiles, so append "or-highest", which
+// lowers only the minimum to 1.2; servers offering 1.3 still get 1.3. Sets
+// `changed` if a line was rewritten.
+inline std::string relax_tls_version_min(const std::string &profile, bool &changed) {
+    std::string out;
+    std::istringstream in(profile);
+    std::string line;
+    changed = false;
+    while (std::getline(in, line)) {
+        const bool cr = !line.empty() && line.back() == '\r';
+        if (cr)
+            line.pop_back();
+        std::istringstream words(line);
+        std::string directive, version, extra;
+        words >> directive >> version >> extra;
+        if (directive == "tls-version-min" && version == "1.3" && extra.empty()) {
+            line += " or-highest";
+            changed = true;
+        }
+        out += line;
+        out += cr ? "\r\n" : "\n";
+    }
+    return out;
+}
 
 struct TunConfig {
     std::vector<std::string> addresses;  // CIDR, e.g. "10.8.0.6/24"
@@ -124,12 +153,17 @@ public:
     }
 
     // Parses the profile, supplies credentials if it needs them and runs the
-    // session until it ends or stop() is called. Returns "" on a clean exit,
-    // otherwise an error message.
+    // session until it ends or stop() is called. `response` answers the
+    // profile's static-challenge (e.g. an authenticator code). Returns "" on a
+    // clean exit, otherwise an error message.
     std::string run(const std::string &profile, const std::string &username,
-                    const std::string &password) {
+                    const std::string &password, const std::string &response = {}) {
         openvpn::ClientAPI::Config config;
-        config.content = profile;
+        bool relaxed = false;
+        config.content = relax_tls_version_min(profile, relaxed);
+        if (relaxed)
+            listener_.on_log("profile has tls-version-min 1.3, which OpenVPN 3 with mbed TLS "
+                             "rejects; using tls-version-min 1.3 or-highest (minimum TLS 1.2)");
         config.guiVersion = "ovpn-vless-chain 0.1";
         config.tunPersist = true;  // keep the socketpair across reconnects
         config.dco = false;
@@ -145,9 +179,13 @@ public:
         if (eval.error)
             return "profile error: " + eval.message;
         if (!eval.autologin) {
+            if (!eval.staticChallenge.empty() && response.empty())
+                return "the profile asks for \"" + eval.staticChallenge + "\"; enter the one-time code";
             openvpn::ClientAPI::ProvideCreds creds;
             creds.username = username;
             creds.password = password;
+            // The core sends it as SCRV1:<base64 password>:<base64 response>.
+            creds.response = response;
             const auto st = provide_creds(creds);
             if (st.error)
                 return "credentials error: " + st.message;

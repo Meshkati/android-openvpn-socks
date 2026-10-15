@@ -166,11 +166,12 @@ extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *) {
     return JNI_VERSION_1_6;
 }
 
-// fun run(profile: String, username: String, password: String, callbacks: Callbacks): String?
+// fun run(profile: String, username: String, password: String, response: String,
+//         callbacks: Callbacks): String?
 extern "C" JNIEXPORT jstring JNICALL
 Java_io_github_meshkati_ovpnvless_OpenVpn3_run(JNIEnv *env, jobject, jstring profile,
                                                jstring username, jstring password,
-                                               jobject callbacks) {
+                                               jstring response, jobject callbacks) {
     JniListener listener(env, callbacks);
     chain::Client client(listener);
     {
@@ -183,7 +184,7 @@ Java_io_github_meshkati_ovpnvless_OpenVpn3_run(JNIEnv *env, jobject, jstring pro
     std::string err;
     try {
         err = client.run(from_jstring(env, profile), from_jstring(env, username),
-                         from_jstring(env, password));
+                         from_jstring(env, password), from_jstring(env, response));
     } catch (const std::exception &e) {
         err = e.what();
     }

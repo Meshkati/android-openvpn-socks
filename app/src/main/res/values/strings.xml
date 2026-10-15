@@ -5,6 +5,7 @@
     <string name="import_profile">Import .ovpn file</string>
     <string name="username">OpenVPN username (if required)</string>
     <string name="password">OpenVPN password</string>
+    <string name="otp">One-time code (if the profile asks for one)</string>
     <string name="vless_link">VLESS link (vless://…) or Xray JSON config</string>
     <string name="connect">Connect</string>
     <string name="disconnect">Disconnect</string>

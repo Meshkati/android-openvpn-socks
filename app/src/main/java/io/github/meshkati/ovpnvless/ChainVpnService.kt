@@ -30,13 +30,16 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         const val ACTION_CONNECT = "io.github.meshkati.ovpnvless.CONNECT"
         const val ACTION_DISCONNECT = "io.github.meshkati.ovpnvless.DISCONNECT"
 
+        // One-time code for the profile's static-challenge. Not stored: it is
+        // only valid once.
+        const val EXTRA_OTP = "otp"
+
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "vpn"
 
-        // Addresses of the device TUN. Only Xray reads this interface, so any
+        // Address of the device TUN. Only Xray reads this interface, so any
         // private range unused by the local network works.
         private const val TUN_ADDRESS_V4 = "172.19.0.1"
-        private const val TUN_ADDRESS_V6 = "fdfe:dcba:9876::1"
 
         // DNS server given to apps; their queries are carried over VLESS.
         private const val APP_DNS = "1.1.1.1"
@@ -53,7 +56,7 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
             disconnect()
         } else {
             // ACTION_CONNECT, or the system starting us for always-on VPN.
-            connect()
+            connect(intent?.getStringExtra(EXTRA_OTP).orEmpty())
         }
         return START_NOT_STICKY
     }
@@ -69,7 +72,7 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
     }
 
     @Synchronized
-    private fun connect() {
+    private fun connect(otp: String) {
         startForegroundNotification()
         if (session != null) return
 
@@ -81,7 +84,7 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
 
         session = thread(name = "openvpn3") {
             val error = try {
-                OpenVpn3.run(settings.profile, settings.username, settings.password, this)
+                OpenVpn3.run(settings.profile, settings.username, settings.password, otp, this)
             } catch (e: Throwable) {
                 e.toString()
             }
@@ -127,10 +130,13 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
             val pfd = Builder()
                 .setSession(getString(R.string.app_name))
                 .setMtu(mtu)
+                // IPv4 only. With no IPv6 address or route, Android blocks
+                // IPv6 while the VPN is up (no leak) and apps fall back to
+                // IPv4. VLESS servers often send IPv6 destinations out a
+                // different way (a Cloudflare Worker uses a relay pool for
+                // them), so offering IPv6 made sites see another exit IP.
                 .addAddress(TUN_ADDRESS_V4, 30)
                 .addRoute("0.0.0.0", 0)
-                .addAddress(TUN_ADDRESS_V6, 126)
-                .addRoute("::", 0)
                 .addDnsServer(APP_DNS)
                 // Our own sockets (OpenVPN's transport) must bypass the TUN,
                 // or OpenVPN would try to tunnel through itself.

@@ -19,8 +19,14 @@ object OpenVpn3 {
         fun onTun(fd: Int, addresses: Array<String>, dns: Array<String>, mtu: Int): Boolean
     }
 
-    /** Runs one session and blocks until it ends. Returns null on a clean exit, else an error. */
-    external fun run(profile: String, username: String, password: String, callbacks: Callbacks): String?
+    /**
+     * Runs one session and blocks until it ends. [response] answers the profile's
+     * static-challenge (an authenticator code), or is empty. Returns null on a
+     * clean exit, else an error.
+     */
+    external fun run(
+        profile: String, username: String, password: String, response: String, callbacks: Callbacks
+    ): String?
 
     /** Asks the running session to disconnect; [run] then returns. */
     external fun stop()

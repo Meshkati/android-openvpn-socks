@@ -22,6 +22,7 @@ class MainActivity : Activity() {
     private lateinit var profile: EditText
     private lateinit var username: EditText
     private lateinit var password: EditText
+    private lateinit var otp: EditText
     private lateinit var vless: EditText
     private lateinit var toggle: Button
     private lateinit var status: TextView
@@ -35,6 +36,7 @@ class MainActivity : Activity() {
         profile = findViewById(R.id.profile)
         username = findViewById(R.id.username)
         password = findViewById(R.id.password)
+        otp = findViewById(R.id.otp)
         vless = findViewById(R.id.vless)
         toggle = findViewById(R.id.toggle)
         status = findViewById(R.id.status)
@@ -92,7 +94,12 @@ class MainActivity : Activity() {
     }
 
     private fun startVpnService() {
-        startForegroundService(Intent(this, ChainVpnService::class.java).setAction(ChainVpnService.ACTION_CONNECT))
+        startForegroundService(
+            Intent(this, ChainVpnService::class.java)
+                .setAction(ChainVpnService.ACTION_CONNECT)
+                .putExtra(ChainVpnService.EXTRA_OTP, otp.text.toString().trim())
+        )
+        otp.text.clear() // a code works only once
     }
 
     private fun disconnect() {

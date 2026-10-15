@@ -30,9 +30,10 @@ apps' traffic into Xray. So OpenVPN never gets a real TUN:
    Xray's system dialer is replaced (`internet.UseAlternativeSystemDialer`), so the
    VLESS connection, and any DNS lookup of the VLESS hostname, is made *inside* the
    OpenVPN tunnel. The Android routing table never points at OpenVPN.
-3. Only then does the service build the device TUN (all IPv4/IPv6, apps' DNS
-   `1.1.1.1`). Xray's built-in `tun` inbound reads it, which is the same mechanism
-   v2rayNG uses (`xray.tun.fd`).
+3. Only then does the service build the device TUN (all IPv4, apps' DNS `1.1.1.1`;
+   IPv6 is blocked so every app takes the same IPv4 path through VLESS). Xray's
+   built-in `tun` inbound reads it, which is the same mechanism v2rayNG uses
+   (`xray.tun.fd`).
 4. The app excludes itself from its own VPN (`addDisallowedApplication`), so
    OpenVPN's transport socket goes straight to the real network.
 
@@ -105,7 +106,7 @@ export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VER"
 export PATH="$ANDROID_HOME/platform-tools:$PATH"
 
 # Build
-git clone -b claude/keen-turing-oo162l https://github.com/Meshkati/android-openvpn-socks.git
+git clone -b main https://github.com/Meshkati/android-openvpn-socks.git
 cd android-openvpn-socks
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 scripts/build-engine.sh
@@ -117,12 +118,24 @@ adb devices
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
+For day-to-day work, put the NDK version in `~/.gradle/gradle.properties` once
+(`ndkVersion=30.0.16248370`), and plain `./gradlew installDebug` builds and installs on
+every connected device (USB or wireless debugging). `app/libs/engine.aar` is not built
+by Gradle: re-run `scripts/build-engine.sh` after changing `engine/`. It needs Go 1.27;
+with an older Go installed, `GOTOOLCHAIN=go1.27.2 scripts/build-engine.sh` works.
+
+Behind a filtered network where `dl.google.com` fails, `sdkmanager` takes
+`--proxy=http --proxy_host=… --proxy_port=…`, and Gradle reads
+`systemProp.https.proxyHost`/`proxyPort` from `~/.gradle/gradle.properties`.
+
 ## Using the app
 
 1. Paste or import your `.ovpn` profile. Inline `<ca>`, `<cert>`, `<key>`,
    `<tls-auth>`, `<tls-crypt>` and `<tls-crypt-v2>` work. A username/password-only
    profile (no client cert) also works.
 2. Enter the OpenVPN username/password if the profile has `auth-user-pass`.
+   If it has `static-challenge` (e.g. OpenVPN Access Server with an authenticator
+   app), also enter the current one-time code before each Connect.
 3. Paste a VLESS share link, for example
    `vless://UUID@host:443?security=reality&sni=…&pbk=…&sid=…&fp=chrome&type=tcp&flow=xtls-rprx-vision`.
    Supported: `type=tcp|ws|grpc|httpupgrade|xhttp`, `security=none|tls|reality`.
@@ -154,18 +167,88 @@ What was verified while writing this, on Linux x86_64:
 * The Kotlin sources compile with `-Werror` against the Android 16 (API 36) framework.
 * The Go engine cross-compiles for android/arm64, arm and amd64.
 
-**Not yet verified:** the Gradle/APK build and a run on a real device. The build
-environment had no Android SDK/NDK. Expect to possibly adjust AGP/NDK versions to your
-installation.
+Verified on a phone (Pixel 10 Pro, Android 16; built on macOS with AGP 8.13, NDK r30,
+Go 1.27.2): an OpenVPN Access Server profile (TCP, `tls-crypt-v2`, authenticator
+code) connects with TLS 1.3, and a VLESS link (WebSocket + TLS via a Cloudflare Worker)
+carries all traffic. whatismyip.com in Chrome shows the VLESS exit for IPv4 and
+"IPv6: not detected".
+
+### Fixed after the first run on a phone
+
+* **Engine link error with Go ≥ 1.23.** `gomobile bind` failed with `link:
+  github.com/wlynxg/anet: invalid reference to net.zoneCache`. anet (pulled in by
+  Xray-core through pion/stun) uses `//go:linkname` into `net`, so
+  `scripts/build-engine.sh` now links with `-checklinkname=0`, as anet documents.
+* **`ERR_INVALID_OPTION_CRYPTO: tls-version-min: unrecognized TLS version`.** OpenVPN
+  Access Server profiles contain `tls-version-min 1.3`. OpenVPN 3's mbed TLS backend
+  caps that option at 1.2 when parsing (`mbedtls/ssl/sslctx.hpp`, also on openvpn3
+  master) and throws before connecting. `chain::Client` rewrites the line to
+  `tls-version-min 1.3 or-highest`, which only lowers the minimum: mbed TLS 3.6 still
+  negotiates TLS 1.3 with servers that offer it.
+* **Authenticator codes (`static-challenge`).** The app has a one-time code field. The
+  code goes to OpenVPN 3 as `ProvideCreds.response` (sent as
+  `SCRV1:<password>:<code>`), is never stored, and is cleared after each Connect.
+  Without a code, a profile with `static-challenge` stops before contacting the server.
+* **Sites saw a different exit IP than the VLESS one (IPv6).** The device TUN offered
+  IPv6, so browsers preferred IPv6. Those connections still went through VLESS (the app
+  has no other route out), but a Cloudflare Worker sends IPv6 destinations out through
+  a different relay than IPv4 ones, so whatismyip showed an unexpected address. The
+  OpenVPN server also pushes `block-ipv6`. The TUN is now IPv4-only: with no IPv6
+  address or route, Android blocks IPv6 while the VPN is up (no leak to Wi-Fi) and apps
+  fall back to IPv4.
+* **Crash when the app went to the background** (`TransactionTooLargeException`, about
+  1 MB). The profile `EditText` kept its text and undo history in the saved instance
+  state. The profile, VLESS and log views no longer save view state. Their content
+  already lives in `Settings` and `VpnState`.
 
 Limitations of this minimal version:
 
-* No OpenVPN static/dynamic challenge (OTP), private-key passphrase, or external PKI.
+* No OpenVPN dynamic challenge (`CRV1`), private-key passphrase, or external PKI.
+  Static challenge (`static-challenge`, e.g. authenticator codes) works, but the code
+  must be typed for each Connect, so always-on VPN cannot start such a profile.
+* IPv6 is blocked while connected. Everything goes over IPv4 through VLESS.
 * Credentials are stored unencrypted in app-private SharedPreferences.
 * Apps' DNS is fixed to `1.1.1.1` (carried over VLESS). There are no routing rules or
   per-app selection; everything except this app goes through the chain.
 * OpenVPN `route`/`redirect-gateway` options are ignored. Only Xray uses the OpenVPN
   tunnel, so routes have no effect.
+
+## To do: leak checks
+
+The IPv6 case showed that "it connects" is not proof that every packet goes through
+VLESS. Check these before relying on the app:
+
+- [ ] **The app's own sockets.** The app is excluded from its own VPN, and the Go
+  engine runs in its process, so any socket there that bypasses Xray's tunnel dialer
+  goes straight to Wi-Fi. While connected, the only kernel socket owned by the app's
+  UID should be the one to the OpenVPN server. Check with
+  `adb shell 'cat /proc/net/tcp /proc/net/tcp6 /proc/net/udp /proc/net/udp6'` filtered
+  by the app's UID (column 8), over time and across connect/reconnect, not as a single
+  snapshot. One snapshot on the Pixel showed only the OpenVPN connection.
+- [ ] **VLESS hostname lookup without pushed DNS.** `engine/tunnelnet.go` falls back to
+  `net.DefaultResolver` when OpenVPN pushes no DNS servers. In this process that
+  resolver uses Wi-Fi, so the VLESS hostname would be resolved outside the tunnel.
+  Refuse to start, or use a fixed resolver inside the tunnel.
+- [ ] **DNS leaks.** Apps use `1.1.1.1` through VLESS. Confirm with dnsleaktest.com or
+  browserleaks.com/dns that no ISP or OpenVPN-network resolver sees the queries, also
+  with Android Private DNS on and with Chrome's Secure DNS.
+- [ ] **UDP, QUIC and WebRTC.** UDP is routed to VLESS too, but a Cloudflare Worker
+  can't carry UDP (except DNS), and other servers may send UDP out somewhere else.
+  Check browserleaks.com/webrtc for public candidates, and compare exit IPs over
+  HTTP/3 and over TCP.
+- [ ] **Pasted Xray JSON configs.** A user config with a `freedom`/direct outbound
+  exits through the OpenVPN network (the system dialer is replaced). A `dns` section
+  with `localhost` uses Go's resolver, which goes to Wi-Fi from this process. Warn about
+  or reject these.
+- [ ] **Kill switch.** If OpenVPN drops for good or the app crashes, the VPN goes away
+  and apps use Wi-Fi directly. Test with Android's Always-on VPN + "Block connections
+  without VPN", and decide how that works with authenticator codes.
+- [ ] **Reconnects and network changes.** Check Wi-Fi ↔ mobile switches and OpenVPN
+  `ping-restart`: `onTun` rebuilds the TUN and restarts the engine, so look for windows
+  where traffic is not carried, and check that nothing falls back to the real network.
+- [ ] **Exit IP consistency.** Check several IP services (TCP and HTTP/3), plus
+  whatismyip.com showing "IPv6: not detected", after OS updates and with other VLESS
+  servers, not only the Worker.
 
 ## Licenses
 
