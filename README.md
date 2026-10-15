@@ -86,6 +86,37 @@ scripts/build-engine.sh                     # builds app/libs/engine.aar
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
+### macOS, step by step
+
+```sh
+# Tools (Homebrew)
+xcode-select --install 2>/dev/null || true          # git
+brew install openjdk@17 go
+brew install --cask android-commandlinetools
+export JAVA_HOME="$(brew --prefix openjdk@17)/libexec/openjdk.jdk/Contents/Home"
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+
+# Android SDK packages, with the newest stable NDK
+yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses >/dev/null
+NDK_VER=$(sdkmanager --sdk_root="$ANDROID_HOME" --list 2>/dev/null \
+  | grep -oE 'ndk;[0-9]+\.[0-9]+\.[0-9]+ ' | sed 's/ndk;//; s/ //' | sort -V | tail -1)
+sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-36" "cmake;3.22.1" "ndk;$NDK_VER"
+export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VER"
+export PATH="$ANDROID_HOME/platform-tools:$PATH"
+
+# Build
+git clone -b claude/keen-turing-oo162l https://github.com/Meshkati/android-openvpn-socks.git
+cd android-openvpn-socks
+echo "sdk.dir=$ANDROID_HOME" > local.properties
+scripts/build-engine.sh
+./gradlew :app:assembleDebug -PndkVersion="$NDK_VER"
+
+# Install: enable Developer options + USB debugging on the phone, plug it in,
+# accept the "Allow USB debugging" prompt, then:
+adb devices
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
 ## Using the app
 
 1. Paste or import your `.ovpn` profile. Inline `<ca>`, `<cert>`, `<key>`,
