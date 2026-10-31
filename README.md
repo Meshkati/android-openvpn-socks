@@ -37,6 +37,42 @@ apps' traffic into Xray. So OpenVPN never gets a real TUN:
 4. The app excludes itself from its own VPN (`addDisallowedApplication`), so
    OpenVPN's transport socket goes straight to the real network.
 
+## What goes through the tunnel
+
+The app is a full-device VPN: it uses Android's `VpnService` TUN, and everything it
+captures is sent to the VLESS server.
+
+* **All IPv4 traffic from other apps.** The TUN routes `0.0.0.0/0`, and Xray's only
+  outbound is the VLESS server, with no routing rules. Nothing goes out directly.
+* **Apps' DNS.** Apps are given `1.1.1.1` as their DNS server, and those queries go
+  over VLESS like any other traffic.
+* **Not IPv6.** The TUN has no IPv6 address or route, so Android blocks IPv6 while the
+  VPN is up and apps fall back to IPv4.
+* **Not this app's own traffic.** The app excludes itself
+  (`addDisallowedApplication`), so OpenVPN's connection to its server uses the real
+  network instead of looping back into the VPN.
+
+Sniffing is on with `routeOnly: true`: Xray reads the domain from HTTP, TLS and QUIC
+for routing, but connects to the original destination IP.
+
+### TUN stack: gVisor
+
+The TUN is read by Xray's built-in `tun` inbound, which turns raw IP packets into TCP
+and UDP connections with the **gVisor** userspace TCP/IP stack. That is the only stack
+Xray's `tun` inbound has. Its config has no `stack` option, so the `system` and
+`mixed` stacks you may know from sing-box don't exist here.
+
+A second gVisor stack runs on the OpenVPN side (`engine/tunnelnet.go`). Xray's dialer
+is replaced with it, so the VLESS connection is made inside the OpenVPN tunnel:
+
+```
+apps ─► Android TUN ─► Xray tun inbound (gVisor #1) ─► VLESS outbound
+     ─► engine's stack (gVisor #2) ─► socketpair ─► OpenVPN 3 ─► real network
+```
+
+Neither layer uses the kernel's TCP/IP stack for tunnelled traffic. Both run in
+userspace inside the app's process.
+
 ## Libraries used
 
 | Need | Library | Version |
