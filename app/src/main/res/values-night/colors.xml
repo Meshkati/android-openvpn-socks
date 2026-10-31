@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg">#0F1513</color>
+    <color name="card">#18211E</color>
+    <color name="ink">#E4ECE9</color>
+    <color name="muted">#95A39E</color>
+    <color name="line">#33403C</color>
+    <color name="track">#24302C</color>
+    <color name="field">#1F2A27</color>
+    <color name="accent">#5FD3B8</color>
+    <color name="accent_soft">#173A33</color>
+    <color name="on_accent">#00382E</color>
+    <color name="warn">#F2B45C</color>
+    <color name="warn_soft">#3A2A12</color>
+    <color name="err">#FFB4AB</color>
+    <color name="err_soft">#4A1A17</color>
+    <color name="ripple">#1FE4ECE9</color>
+    <color name="shadow">#33000000</color>
+    <color name="log_bg">#080C0B</color>
+</resources>

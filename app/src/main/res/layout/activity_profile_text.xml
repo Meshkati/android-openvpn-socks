@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    style="@style/Screen">
+
+    <LinearLayout style="@style/AppBar">
+
+        <ImageButton
+            android:id="@+id/back"
+            style="@style/IconButton"
+            android:contentDescription="@string/back"
+            android:src="@drawable/ic_arrow_back" />
+
+        <TextView
+            style="@style/AppBarTitle"
+            android:layout_marginStart="4dp"
+            android:text="@string/profile_text_title" />
+
+        <Button
+            android:id="@+id/done"
+            style="@style/Button.Text"
+            android:layout_marginEnd="4dp"
+            android:text="@string/done" />
+    </LinearLayout>
+
+    <EditText
+        android:id="@+id/profile"
+        style="@style/Field.Mono"
+        android:layout_height="0dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="16dp"
+        android:layout_weight="1"
+        android:hint="@string/profile_text_hint" />
+
+    <TextView
+        style="@style/Text.Help"
+        android:layout_marginBottom="16dp"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:text="@string/profile_text_help" />
+</LinearLayout>

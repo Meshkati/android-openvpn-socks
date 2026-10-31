@@ -1,13 +1,137 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">OpenVPN → VLESS</string>
-    <string name="ovpn_profile">OpenVPN profile (.ovpn)</string>
-    <string name="import_profile">Import .ovpn file</string>
-    <string name="username">OpenVPN username (if required)</string>
-    <string name="password">OpenVPN password</string>
-    <string name="otp">One-time code (if the profile asks for one)</string>
-    <string name="vless_link">VLESS link (vless://…) or Xray JSON config</string>
+    <string name="notification_channel">VPN status</string>
+    <string name="back">Back</string>
+    <string name="log">Log</string>
+    <string name="view_log">View log</string>
+
+    <!-- Home: toggle -->
     <string name="connect">Connect</string>
     <string name="disconnect">Disconnect</string>
-    <string name="notification_channel">VPN status</string>
+    <string name="cancel">Cancel</string>
+
+    <!-- Home: state titles -->
+    <string name="state_not_set_up">Not set up</string>
+    <string name="state_disconnected">Disconnected</string>
+    <string name="state_connecting">Connecting…</string>
+    <string name="state_connected">Connected</string>
+    <string name="state_disconnecting">Disconnecting…</string>
+    <string name="state_failed">Couldn\'t connect</string>
+
+    <!-- Home: hints under the title -->
+    <string name="hint_not_set_up">Add an OpenVPN profile and a VLESS server to connect.</string>
+    <string name="hint_connect">Tap to connect</string>
+    <string name="hint_disconnect">Tap to disconnect</string>
+    <string name="hint_retry">Tap to try again</string>
+    <string name="hint_step_cancel">%1$s\nTap to cancel</string>
+
+    <!-- Connecting steps, from OpenVPN events -->
+    <string name="step_starting">Starting OpenVPN</string>
+    <string name="step_finding_server">Finding the OpenVPN server</string>
+    <string name="step_connecting">Connecting to the OpenVPN server</string>
+    <string name="step_getting_settings">Getting settings from the OpenVPN server</string>
+    <string name="step_setting_up">Setting up the tunnel</string>
+    <string name="step_reconnecting">Reconnecting</string>
+
+    <!-- Home: route card -->
+    <string name="route_caption">Your route · apps → OpenVPN → VLESS → internet</string>
+    <string name="hop_openvpn">OpenVPN</string>
+    <string name="hop_vless">VLESS</string>
+    <string name="hop_step">Step %1$d</string>
+    <string name="add_openvpn">Add OpenVPN profile</string>
+    <string name="add_openvpn_meta">Import a .ovpn file</string>
+    <string name="add_vless">Add VLESS server</string>
+    <string name="add_vless_meta">Paste a vless:// link</string>
+    <string name="hop_connecting">Connecting…</string>
+    <string name="hop_reconnecting">Reconnecting…</string>
+    <string name="hop_waiting">Waiting for OpenVPN</string>
+    <string name="hop_connected">Connected</string>
+    <string name="hop_connected_address">Connected · %1$s</string>
+    <string name="hop_connected_all_apps">Connected · all apps</string>
+    <string name="hop_not_started">Not started</string>
+    <string name="hop_stopped">Stopped</string>
+    <string name="hop_vless_failed">Couldn\'t start</string>
+    <string name="hop_sign_in_failed">Sign-in failed</string>
+    <string name="hop_unreachable">Not reachable</string>
+    <string name="hop_certificate">Certificate doesn\'t match</string>
+    <string name="hop_profile_problem">Profile problem</string>
+    <string name="hop_sign_in_needed">Sign-in needed</string>
+    <string name="hop_code_needed">Code needed</string>
+    <string name="hop_description">%1$s: %2$s, %3$s</string>
+
+    <!-- Home: authenticator code -->
+    <string name="otp_label">Authenticator code</string>
+    <string name="otp_help">Your profile asks for a new code each time you connect.</string>
+    <string name="otp_missing">Enter the code first.</string>
+
+    <!-- Home: notices -->
+    <string name="connected_info">All apps use this route. IPv6 is off while connected.</string>
+    <string name="failure_profile">The OpenVPN profile can\'t be used. Open it to check it, or import it again.</string>
+    <string name="failure_code_needed">Enter the authenticator code, then connect.</string>
+    <string name="failure_credentials">OpenVPN needs a username and password. Add them to the OpenVPN profile.</string>
+    <string name="failure_sign_in">OpenVPN rejected the sign-in. Check the username and password.</string>
+    <string name="failure_sign_in_code">OpenVPN rejected the sign-in. Check the username and password, and enter a fresh authenticator code.</string>
+    <string name="failure_unreachable">Couldn\'t reach the OpenVPN server. Check your internet connection.</string>
+    <string name="failure_certificate">The OpenVPN server\'s certificate doesn\'t match the profile.</string>
+    <string name="failure_vless">OpenVPN connected, but VLESS couldn\'t start. Check the VLESS link.</string>
+    <string name="failure_other">The connection stopped.</string>
+    <string name="profile_and_vless_needed">Add an OpenVPN profile and a VLESS server first.</string>
+
+    <!-- OpenVPN profile screen -->
+    <string name="openvpn_title">OpenVPN profile</string>
+    <string name="profile_none">No profile yet</string>
+    <string name="profile_none_meta">Import a .ovpn file, or paste its text.</string>
+    <string name="profile_no_server">Profile loaded</string>
+    <string name="profile_meta">%1$s %2$d</string>
+    <string name="profile_asks_code">asks for authenticator code</string>
+    <string name="import_file">Import file</string>
+    <string name="edit_text">Edit text</string>
+    <string name="import_failed">Couldn\'t read that file.</string>
+    <string name="sign_in">Sign-in</string>
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+    <string name="show_password">Show password</string>
+    <string name="hide_password">Hide password</string>
+    <string name="sign_in_help">Leave both empty if the profile uses only a certificate.</string>
+    <string name="saved_locally">Saved on this phone only</string>
+
+    <!-- Profile text screen -->
+    <string name="profile_text_title">Profile text</string>
+    <string name="done">Done</string>
+    <string name="profile_text_hint">client\ndev tun\nremote vpn.example.com 1194\n…</string>
+    <string name="profile_text_help">Paste a full profile. Inline &lt;ca&gt;, &lt;cert&gt;, &lt;key&gt;, &lt;tls-auth&gt;, &lt;tls-crypt&gt; and &lt;tls-crypt-v2&gt; work.</string>
+
+    <!-- VLESS screen -->
+    <string name="vless_title">VLESS server</string>
+    <string name="vless_label">Share link or Xray JSON config</string>
+    <string name="vless_hint">vless://…</string>
+    <string name="paste">Paste</string>
+    <string name="clipboard_empty">The clipboard has no text.</string>
+    <string name="vless_from_link">From this link</string>
+    <string name="vless_custom">Custom Xray config</string>
+    <string name="vless_custom_meta">Xray JSON</string>
+    <string name="vless_custom_help">A JSON config is used as is. It must contain a tun inbound.</string>
+    <string name="vless_invalid">This doesn\'t look like a vless:// link or an Xray JSON config.</string>
+    <string name="vless_help">The server name may resolve only inside the OpenVPN network. That works: it is looked up with the DNS servers OpenVPN pushes.</string>
+    <string name="vless_invalid_meta">Can\'t read this link</string>
+    <string name="vless_link_name">VLESS link</string>
+    <string name="row_server">Server</string>
+    <string name="row_port">Port</string>
+    <string name="row_transport">Transport</string>
+    <string name="row_security">Security</string>
+    <string name="row_flow">Flow</string>
+    <string name="row_sni">SNI</string>
+    <string name="row_name">Name</string>
+
+    <!-- Log screen -->
+    <string name="log_all">All</string>
+    <string name="log_openvpn">OpenVPN</string>
+    <string name="log_xray">Xray</string>
+    <string name="log_empty">Nothing logged yet. Connect to see OpenVPN and Xray messages.</string>
+    <string name="copy_log">Copy log</string>
+    <string name="log_copied">Log copied</string>
+
+    <!-- Notification -->
+    <string name="notification_route">%1$s → %2$s</string>
 </resources>

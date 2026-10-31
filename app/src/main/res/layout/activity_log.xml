@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    style="@style/Screen">
+
+    <LinearLayout style="@style/AppBar">
+
+        <ImageButton
+            android:id="@+id/back"
+            style="@style/IconButton"
+            android:contentDescription="@string/back"
+            android:src="@drawable/ic_arrow_back" />
+
+        <TextView
+            style="@style/AppBarTitle"
+            android:layout_marginStart="4dp"
+            android:text="@string/log" />
+
+        <ImageButton
+            android:id="@+id/copy"
+            style="@style/IconButton"
+            android:contentDescription="@string/copy_log"
+            android:src="@drawable/ic_copy" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="12dp">
+
+        <TextView
+            android:id="@+id/filter_all"
+            style="@style/Chip"
+            android:text="@string/log_all" />
+
+        <TextView
+            android:id="@+id/filter_openvpn"
+            style="@style/Chip"
+            android:layout_marginStart="8dp"
+            android:text="@string/log_openvpn" />
+
+        <TextView
+            android:id="@+id/filter_xray"
+            style="@style/Chip"
+            android:layout_marginStart="8dp"
+            android:text="@string/log_xray" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:layout_weight="1"
+        android:background="@drawable/bg_log">
+
+        <ScrollView
+            android:id="@+id/log_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:padding="12dp">
+
+            <TextView
+                android:id="@+id/log_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:lineSpacingExtra="2dp"
+                android:saveEnabled="false"
+                android:textColor="@color/log_text"
+                android:textIsSelectable="true"
+                android:textSize="11sp" />
+        </ScrollView>
+
+        <TextView
+            android:id="@+id/log_empty"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:padding="32dp"
+            android:text="@string/log_empty"
+            android:textColor="@color/log_app"
+            android:textSize="14sp"
+            android:visibility="gone" />
+    </FrameLayout>
+</LinearLayout>

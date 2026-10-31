@@ -56,4 +56,6 @@ kotlin {
 dependencies {
     // Built by scripts/build-engine.sh (gomobile bind of /engine: Xray-core + gVisor).
     implementation(files("libs/engine.aar"))
+
+    testImplementation("junit:junit:4.13.2")
 }

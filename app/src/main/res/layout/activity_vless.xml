@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    style="@style/Screen"
+    android:focusable="true"
+    android:focusableInTouchMode="true">
+
+    <LinearLayout style="@style/AppBar">
+
+        <ImageButton
+            android:id="@+id/back"
+            style="@style/IconButton"
+            android:contentDescription="@string/back"
+            android:src="@drawable/ic_arrow_back" />
+
+        <TextView
+            style="@style/AppBarTitle"
+            android:layout_marginStart="4dp"
+            android:text="@string/vless_title" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout style="@style/Content">
+
+            <TextView
+                style="@style/Text.Label"
+                android:labelFor="@+id/vless"
+                android:text="@string/vless_label" />
+
+            <EditText
+                android:id="@+id/vless"
+                style="@style/Field.Mono"
+                android:hint="@string/vless_hint"
+                android:maxLines="10"
+                android:minLines="4" />
+
+            <TextView
+                android:id="@+id/vless_error"
+                style="@style/Text.Help"
+                android:text="@string/vless_invalid"
+                android:textColor="@color/err"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/paste"
+                style="@style/Button.Tone"
+                android:layout_marginTop="12dp"
+                android:drawableStart="@drawable/ic_paste"
+                android:text="@string/paste" />
+
+            <LinearLayout
+                android:id="@+id/summary"
+                style="@style/Card"
+                android:layout_marginTop="20dp"
+                android:paddingBottom="10dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/summary_caption"
+                    style="@style/Text.Caption"
+                    android:text="@string/vless_from_link" />
+
+                <LinearLayout
+                    android:id="@+id/summary_rows"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/vless_help"
+                style="@style/Text.Help"
+                android:layout_marginTop="16dp"
+                android:text="@string/vless_help" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
