@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenVPN → VLESS UI sketches</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Roboto+Flex:opsz,wght@8..144,400;8..144,500;8..144,600&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: a review sheet. Intro and principles, then rows of phone frames with notes under each, then the mapping table and open questions. */
+:root {
+  /* page */
+  --paper: #f3f4f2;
+  --ink: #1b1f1d;
+  --muted: #5d6662;
+  --rule: #d6dad7;
+  --mark: #0e6b5c;
+  --tag: #8a5a00;
+  --tag-bg: #fbefd6;
+  --font-body: "IBM Plex Sans", system-ui, sans-serif;
+  --font-code: "IBM Plex Mono", ui-monospace, monospace;
+  --font-app: "Roboto Flex", Roboto, system-ui, sans-serif;
+  --font-app-mono: "Roboto Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #151917; --ink: #e3e8e5; --muted: #9aa5a0; --rule: #2c3330;
+    --mark: #6fd6bd; --tag: #f0c46b; --tag-bg: #3a2e14; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #151917; --ink: #e3e8e5; --muted: #9aa5a0; --rule: #2c3330;
+  --mark: #6fd6bd; --tag: #f0c46b; --tag-bg: #3a2e14; color-scheme: dark;
+}
+
+/* app palettes: fixed, independent of the page theme */
+.phone {
+  --a-bg: #f4f6f5; --a-card: #ffffff; --a-ink: #15201d; --a-muted: #5f6b67;
+  --a-line: #e1e6e4; --a-track: #e6ebe9; --a-accent: #0e6b5c; --a-accent-soft: #dcefea;
+  --a-on-accent: #ffffff; --a-warn: #b26b00; --a-warn-soft: #fbeedb;
+  --a-err: #b3261e; --a-err-soft: #fbe3e1; --a-field: #eef1f0;
+  --bezel: #1f2523;
+}
+.phone.dark {
+  --a-bg: #0f1513; --a-card: #18211e; --a-ink: #e4ece9; --a-muted: #95a39e;
+  --a-line: #26302d; --a-track: #24302c; --a-accent: #5fd3b8; --a-accent-soft: #173a33;
+  --a-on-accent: #00382e; --a-warn: #f2b45c; --a-warn-soft: #3a2a12;
+  --a-err: #ffb4ab; --a-err-soft: #4a1a17; --a-field: #1f2a27;
+  --bezel: #2a302e;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--paper); color: var(--ink); font: 16px/1.55 var(--font-body); }
+main { max-width: 1320px; margin: 0 auto; padding: 40px 24px 80px; display: grid; gap: 56px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: 34px; font-weight: 600; letter-spacing: -0.01em; }
+h2 { font-size: 22px; font-weight: 600; }
+h3 { font-size: 15px; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+code { font: 0.88em var(--font-code); }
+a { color: var(--mark); }
+.intro { display: grid; gap: 14px; }
+.lede { color: var(--muted); font-size: 17px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px; }
+.box { border-top: 2px solid var(--ink); padding-top: 14px; display: grid; gap: 10px; align-content: start; }
+.box ul, .box ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.section { display: grid; gap: 22px; }
+.section > header { display: grid; gap: 6px; border-bottom: 1px solid var(--rule); padding-bottom: 12px; }
+.section > header p { color: var(--muted); }
+.row { display: flex; flex-wrap: wrap; gap: 36px 28px; align-items: flex-start; }
+figure { margin: 0; width: 300px; display: grid; gap: 12px; }
+figcaption { display: grid; gap: 6px; font-size: 14px; }
+figcaption ul { margin: 0; padding-left: 18px; color: var(--muted); display: grid; gap: 4px; }
+.num { font: 500 12px var(--font-code); color: var(--mark); letter-spacing: 0.04em; }
+.opt { display: inline-block; font: 500 11px/1.6 var(--font-code); color: var(--tag); background: var(--tag-bg); padding: 0 6px; border-radius: 4px; vertical-align: 1px; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; padding: 10px 12px 10px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 600; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.tablewrap { overflow-x: auto; }
+
+/* ---------- phone frame ---------- */
+.phone {
+  width: 300px; height: 640px; border: 10px solid var(--bezel); border-radius: 40px;
+  background: var(--a-bg); color: var(--a-ink); font-family: var(--font-app);
+  display: flex; flex-direction: column; overflow: hidden; position: relative;
+  box-shadow: 0 1px 0 rgba(0,0,0,.04), 0 12px 30px -18px rgba(0,0,0,.35);
+}
+.phone svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.sb { height: 30px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 12px; font-weight: 500; }
+.sb .r { display: flex; gap: 6px; align-items: center; }
+.sb svg { width: 13px; height: 13px; }
+.bat { width: 20px; height: 10px; border: 1.5px solid currentColor; border-radius: 3px; position: relative; }
+.bat::after { content: ""; position: absolute; inset: 1.5px 5px 1.5px 1.5px; background: currentColor; border-radius: 1px; }
+.bar { height: 52px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 16px; }
+.bar .t { font-size: 18px; font-weight: 500; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar.sub { padding-left: 6px; }
+.ib { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--a-muted); }
+.tb { font-size: 14px; font-weight: 500; color: var(--a-accent); padding: 8px 10px; border-radius: 20px; display: inline-flex; gap: 6px; align-items: center; }
+.tb svg { width: 16px; height: 16px; }
+.body { flex: 1; padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
+
+/* hero toggle */
+.hero { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 0 6px; }
+.toggle { position: relative; width: 144px; height: 144px; border-radius: 50%; margin-bottom: 12px; }
+.toggle .ring { position: absolute; inset: 0; border-radius: 50%; background: var(--a-track); }
+.toggle .core { position: absolute; inset: 11px; border-radius: 50%; background: var(--a-card); display: grid; place-items: center; color: var(--a-muted); box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+.toggle .core svg { width: 44px; height: 44px; stroke-width: 2.2; }
+.toggle.on .ring { background: var(--a-accent-soft); }
+.toggle.on .core { background: var(--a-accent); color: var(--a-on-accent); }
+.toggle.busy .ring { background: conic-gradient(var(--a-warn) 0 32%, var(--a-track) 32% 100%); animation: spin 1.4s linear infinite; }
+.toggle.busy .core { color: var(--a-warn); }
+.toggle.dim { opacity: .45; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .toggle.busy .ring { animation: none; } }
+.state { font-size: 24px; font-weight: 500; }
+.hint { font-size: 13px; color: var(--a-muted); text-align: center; max-width: 230px; }
+.state.err { color: var(--a-err); }
+
+/* cards */
+.card { background: var(--a-card); border-radius: 18px; padding: 6px 0; }
+.card .cap { font-size: 12px; color: var(--a-muted); padding: 8px 16px 4px; letter-spacing: .02em; }
+.hop { display: grid; grid-template-columns: 26px 1fr 20px; gap: 12px; align-items: center; padding: 10px 12px 10px 14px; position: relative; }
+.hop + .hop::before { content: ""; position: absolute; left: 26px; top: -10px; height: 20px; border-left: 2px dotted var(--a-line); }
+.dot { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600; background: var(--a-track); color: var(--a-muted); position: relative; z-index: 1; }
+.dot svg { width: 14px; height: 14px; stroke-width: 2.6; }
+.dot.ok { background: var(--a-accent); color: var(--a-on-accent); }
+.dot.busy { background: var(--a-warn-soft); color: var(--a-warn); box-shadow: inset 0 0 0 2px var(--a-warn); }
+.dot.err { background: var(--a-err-soft); color: var(--a-err); }
+.dot.add { background: var(--a-accent-soft); color: var(--a-accent); }
+.hop .k { font-size: 12px; color: var(--a-muted); }
+.hop .v { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hop .m { font-size: 12px; color: var(--a-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hop .m.ok { color: var(--a-accent); }
+.hop .m.busy { color: var(--a-warn); }
+.hop .m.err { color: var(--a-err); }
+.hop .v.add { color: var(--a-accent); }
+.hop > svg { color: var(--a-muted); width: 18px; height: 18px; }
+
+/* fields */
+.field { display: grid; gap: 4px; }
+.field label { font-size: 12px; color: var(--a-muted); padding-left: 4px; }
+.input { background: var(--a-field); border-radius: 12px; padding: 12px 14px; font-size: 15px; display: flex; align-items: center; gap: 8px; min-height: 46px; }
+.input .ph { color: var(--a-muted); flex: 1; }
+.input .val { flex: 1; }
+.input svg { color: var(--a-muted); width: 18px; height: 18px; }
+.input.focus { box-shadow: inset 0 0 0 2px var(--a-accent); background: var(--a-card); }
+.input.mono { font: 12px/1.5 var(--font-app-mono); align-items: flex-start; word-break: break-all; }
+.help { font-size: 12px; color: var(--a-muted); padding: 0 4px; }
+.otp { display: flex; gap: 6px; }
+.otp span { flex: 1; height: 44px; border-radius: 10px; background: var(--a-field); display: grid; place-items: center; font: 500 18px var(--font-app-mono); }
+.otp span.cur { box-shadow: inset 0 0 0 2px var(--a-accent); background: var(--a-card); }
+
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { border-radius: 22px; padding: 10px 16px; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; }
+.btn svg { width: 17px; height: 17px; }
+.btn.fill { background: var(--a-accent); color: var(--a-on-accent); }
+.btn.tone { background: var(--a-accent-soft); color: var(--a-accent); }
+.btn.line { box-shadow: inset 0 0 0 1px var(--a-line); color: var(--a-accent); }
+
+.notice { border-radius: 14px; padding: 12px 14px; font-size: 13px; display: grid; grid-template-columns: 18px 1fr; gap: 10px; }
+.notice svg { width: 18px; height: 18px; }
+.notice.err { background: var(--a-err-soft); color: var(--a-ink); }
+.notice.err svg { color: var(--a-err); }
+.notice.info { background: var(--a-card); color: var(--a-muted); }
+.notice b { font-weight: 600; color: var(--a-ink); }
+
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; padding: 6px 16px 12px; font-size: 13px; }
+.kv dt { color: var(--a-muted); }
+.kv dd { margin: 0; font-weight: 500; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.summary { display: grid; grid-template-columns: 40px 1fr; gap: 12px; padding: 10px 16px 8px; align-items: center; }
+.summary .ico { width: 40px; height: 40px; border-radius: 12px; background: var(--a-accent-soft); color: var(--a-accent); display: grid; place-items: center; }
+.summary .v { font-size: 15px; font-weight: 500; }
+.summary .m { font-size: 12px; color: var(--a-muted); }
+.card .btns { padding: 6px 12px 10px; }
+.sect { font-size: 13px; font-weight: 500; color: var(--a-accent); padding: 4px 4px 0; }
+.foot { margin-top: auto; font-size: 12px; color: var(--a-muted); text-align: center; }
+
+/* log */
+.log { flex: 1; background: #0d1210; color: #c8d3cf; border-radius: 16px; padding: 12px; font: 10.5px/1.6 var(--font-app-mono); overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; gap: 1px; }
+.log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log .o { color: #8fc7ff; }
+.log .x { color: #7fe0c4; }
+.log .e { color: #ff9b91; }
+.log .s { color: #8a9893; }
+.chips { display: flex; gap: 6px; }
+.chip { font-size: 12px; padding: 5px 12px; border-radius: 14px; box-shadow: inset 0 0 0 1px var(--a-line); color: var(--a-muted); }
+.chip.sel { background: var(--a-accent-soft); color: var(--a-accent); box-shadow: none; font-weight: 500; }
+
+/* notification shade strip */
+.shade { width: 300px; border-radius: 22px; background: #e9eeec; padding: 14px 16px; font-family: var(--font-app); color: #15201d; display: grid; gap: 8px; }
+.shade .top { display: flex; gap: 8px; align-items: center; font-size: 12px; color: #5f6b67; }
+.shade svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.shade .tt { font-size: 15px; font-weight: 500; }
+.shade .tx { font-size: 13px; color: #5f6b67; }
+.shade .act { font-size: 13px; font-weight: 500; color: #0e6b5c; }
+
+@media (max-width: 400px) {
+  main { padding: 28px 16px 60px; }
+  h1 { font-size: 28px; }
+  figure, .phone, .shade { width: 100%; max-width: 300px; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-log" viewBox="0 0 24 24"><path d="M5 6h14"/><path d="M5 12h14"/><path d="M5 18h9"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="12" r="4"/><path d="M11.5 12H21"/><path d="M18 12v3"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5"/><path d="M12 16.5h.01"/></symbol>
+  <symbol id="i-paste" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.5h.01"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+</svg>
+
+<main>
+  <section class="intro">
+    <span class="num">android-openvpn-socks · UI proposal · for review</span>
+    <h1>OpenVPN → VLESS UI sketches</h1>
+    <p class="lede">Today everything is on one scrolling form: profile text, sign-in, code, VLESS link, the Connect button, status and the raw log. The proposal keeps every feature and splits them by how often you touch them. Connecting happens on the home screen, setup is one tap away, and the log has its own screen.</p>
+    <div class="cols">
+      <div class="box">
+        <h3>Principles</h3>
+        <ul>
+          <li>One action on the home screen: the round button connects and disconnects.</li>
+          <li>Home shows what is set up (server names), not the raw profile or link.</li>
+          <li>The authenticator code field appears only when the profile has <code>static-challenge</code>.</li>
+          <li>Status in plain words. Raw OpenVPN and Xray messages stay in the log.</li>
+          <li>Light and dark follow the system setting.</li>
+        </ul>
+      </div>
+      <div class="box">
+        <h3>Screens</h3>
+        <ol>
+          <li><b>Home</b>: toggle, status, your route (OpenVPN → VLESS), code field when needed.</li>
+          <li><b>OpenVPN profile</b>: import or edit the <code>.ovpn</code>, username and password.</li>
+          <li><b>VLESS server</b>: share link or Xray JSON, with a read-only summary.</li>
+          <li><b>Log</b>: the same log as today, full screen.</li>
+        </ol>
+      </div>
+      <div class="box">
+        <h3>Not changing</h3>
+        <ul>
+          <li>No new settings, protocols, profiles lists or routing options.</li>
+          <li>Same storage (<code>Settings</code>), same service, same connect flow and VPN prompt.</li>
+          <li>Items marked <span class="opt">optional</span> are small conveniences. Each can be dropped.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= HOME ================= -->
+  <section class="section">
+    <header>
+      <h2>Home</h2>
+      <p>One screen, five states. They come from the existing <code>VpnState</code> phases and the detail text the service already reports.</p>
+    </header>
+    <div class="row">
+
+      <!-- 1 first run -->
+      <figure>
+        <div class="phone" role="img" aria-label="Home screen, first run, nothing set up">
+          <div class="sb"><span>9:41</span><span class="r"><span class="bat"></span></span></div>
+          <div class="bar"><span class="t">OpenVPN → VLESS</span><span class="ib"><svg><use href="#i-log"/></svg></span></div>
+          <div class="body">
+            <div class="hero">
+              <div class="toggle dim"><span class="ring"></span><span class="core"><svg><use href="#i-power"/></svg></span></div>
+              <div class="state">Not set up</div>
+              <div class="hint">Add an OpenVPN profile and a VLESS server to connect.</div>
+            </div>
+            <div class="card">
+              <div class="cap">Your route · apps → OpenVPN → VLESS → internet</div>
+              <div class="hop"><span class="dot add"><svg><use href="#i-plus"/></svg></span><div><div class="k">Step 1</div><div class="v add">Add OpenVPN profile</div><div class="m">Import a .ovpn file</div></div><svg><use href="#i-chev"/></svg></div>
+              <div class="hop"><span class="dot add"><svg><use href="#i-plus"/></svg></span><div><div class="k">Step 2</div><div class="v add">Add VLESS server</div><div class="m">Paste a vless:// link</div></div><svg><use href="#i-chev"/></svg></div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <span class="num">1 · FIRST RUN</span>
+          <ul>
+            <li>Toggle is disabled until both steps are filled. This replaces today's "Enter an OpenVPN profile and a VLESS link" toast.</li>
+            <li>Each row opens its setup screen.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- 2 ready -->
+      <figure>
+        <div class="phone" role="img" aria-label="Home screen, disconnected and ready, with authenticator code field">
+          <div class="sb"><span>9:41</span><span class="r"><span class="bat"></span></span></div>
+          <div class="bar"><span class="t">OpenVPN → VLESS</span><span class="ib"><svg><use href="#i-log"/></svg></span></div>
+          <div class="body">
+            <div class="hero">
+              <div class="toggle"><span class="ring"></span><span class="core"><svg><use href="#i-power"/></svg></span></div>
+              <div class="state">Disconnected</div>
+              <div class="hint">Tap to connect</div>
+            </div>
+            <div class="card">
+              <div class="hop"><span class="dot">1</span><div><div class="k">OpenVPN</div><div class="v">vpn.example.com</div><div class="m">TCP 443 · alex</div></div><svg><use href="#i-chev"/></svg></div>
+              <div class="hop"><span class="dot">2</span><div><div class="k">VLESS</div><div class="v">edge.example.net</div><div class="m">443 · WebSocket · TLS</div></div><svg><use href="#i-chev"/></svg></div>
+            </div>
+            <div class="field">
+              <label for="otp-2">Authenticator code</label>
+              <div class="otp" id="otp-2"><span>4</span><span>8</span><span>1</span><span class="cur"></span><span></span><span></span></div>
+              <div class="help">Your profile asks for a new code each time.</div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <span class="num">2 · READY</span>
+          <ul>
+            <li>Server names come from the profile's <code>remote</code> line and the link's host. Display only.</li>
+            <li>Code field shows only for <code>static-challenge</code> profiles. Cleared after each connect, never stored (as today).</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- 3 connecting -->
+      <figure>
+        <div class="phone" role="img" aria-label="Home screen, connecting to OpenVPN">
+          <div class="sb"><span>9:41</span><span class="r"><span class="bat"></span></span></div>
+          <div class="bar"><span class="t">OpenVPN → VLESS</span><span class="ib"><svg><use href="#i-log"/></svg></span></div>
+          <div class="body">
+            <div class="hero">
+              <div class="toggle busy"><span class="ring"></span><span class="core"><svg><use href="#i-power"/></svg></span></div>
+              <div class="state">Connecting…</div>
+              <div class="hint">Getting settings from the OpenVPN server · Tap to cancel</div>
+            </div>
+            <div class="card">
+              <div class="hop"><span class="dot busy">1</span><div><div class="k">OpenVPN</div><div class="v">vpn.example.com</div><div class="m busy">Connecting…</div></div><svg><use href="#i-chev"/></svg></div>
+              <div class="hop"><span class="dot">2</span><div><div class="k">VLESS</div><div class="v">edge.example.net</div><div class="m">Waiting for OpenVPN</div></div><svg><use href="#i-chev"/></svg></div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <span class="num">3 · CONNECTING</span>
+          <ul>
+            <li>Hint maps OpenVPN events to words: <code>resolve</code> → "Finding the server", <code>wait</code>/<code>connecting</code> → "Connecting", <code>get_config</code> → "Getting settings", <code>reconnecting</code> → "Reconnecting".</li>
+            <li>Tapping cancels (same as Disconnect today).</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- 4 connected -->
+      <figure>
+        <div class="phone" role="img" aria-label="Home screen, connected">
+          <div class="sb"><span>9:41</span><span class="r"><svg><use href="#i-key"/></svg><span class="bat"></span></span></div>
+          <div class="bar"><span class="t">OpenVPN → VLESS</span><span class="ib"><svg><use href="#i-log"/></svg></span></div>
+          <div class="body">
+            <div class="hero">
+              <div class="toggle on"><span class="ring"></span><span class="core"><svg><use href="#i-power"/></svg></span></div>
+              <div class="state">Connected</div>
+              <div class="hint">Tap to disconnect</div>
+            </div>
+            <div class="card">
+              <div class="hop"><span class="dot ok"><svg><use href="#i-check"/></svg></span><div><div class="k">OpenVPN</div><div class="v">vpn.example.com</div><div class="m ok">Connected · 10.8.0.6</div></div><svg><use href="#i-chev"/></svg></div>
+              <div class="hop"><span class="dot ok"><svg><use href="#i-check"/></svg></span><div><div class="k">VLESS</div><div class="v">edge.example.net</div><div class="m ok">Connected · all apps</div></div><svg><use href="#i-chev"/></svg></div>
+            </div>
+            <div class="notice info"><svg><use href="#i-info"/></svg><span>All apps use this route. IPv6 is off while connected.</span></div>
+          </div>
+        </div>
+        <figcaption>
+          <span class="num">4 · CONNECTED</span>
+          <ul>
+            <li>OpenVPN address is the detail <code>onTun</code> already sets.</li>
+            <li>The info line states existing behaviour (full-device, IPv4 only). Static text.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- 5 error -->
+      <figure>
+        <div class="phone" role="img" aria-label="Home screen, connection failed">
+          <div class="sb"><span>9:41</span><span class="r"><span class="bat"></span></span></div>
+          <div class="bar"><span class="t">OpenVPN → VLESS</span><span class="ib"><svg><use href="#i-log"/></svg></span></div>
+          <div class="body">
+            <div class="hero">
+              <div class="toggle"><span class="ring"></span><span class="core"><svg><use href="#i-power"/></svg></span></div>
+              <div class="state err">Couldn't connect</div>
+              <div class="hint">Tap to try again</div>
+            </div>
+            <div class="notice err"><svg><use href="#i-alert"/></svg><span><b>OpenVPN rejected the sign-in.</b> Check the username and password, and enter a fresh authenticator code. <span style="color:var(--a-muted)">(AUTH_FAILED)</span><br><span class="tb" style="padding:6px 0 0">View log</span></span></div>
+            <div class="card">
+              <div class="hop"><span class="dot err">1</span><div><div class="k">OpenVPN</div><div class="v">vpn.example.com</div><div class="m err">Sign-in failed</div></div><svg><use href="#i-chev"/></svg></div>
+              <div class="hop"><span class="dot">2</span><div><div class="k">VLESS</div><div class="v">edge.example.net</div><div class="m">Not started</div></div><svg><use href="#i-chev"/></svg></div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <span class="num">5 · ERROR</span>
+          <ul>
+            <li>Shown when the phase returns to disconnected with an error detail. The raw code stays visible in brackets.</li>
+            <li>Plain-language text for common errors <span class="opt">optional</span>; unknown ones show the raw message.</li>
+          </ul>
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ================= SETUP ================= -->
+  <section class="section">
+    <header>
+      <h2>Setup</h2>
+      <p>Opened from the route rows. Changes save automatically when you go back, the same as today's save on <code>onStop</code>. Changes made while connected apply on the next connect, as today.</p>
+    </header>
+    <div class="row">
+
+      <!-- 6 openvpn -->
+      <figure>
+        <div class="phone" role="img" aria-label="OpenVPN profile screen">
+          <div class="sb"><span>9:41</span><span class="r"><span class="bat"></span></span></div>
+          <div class="bar sub"><span class="ib"><svg><use href="#i-back"/></svg></span><span class="t">OpenVPN profile</span></div>
+          <div class="body">
+            <div class="card">
+              <div class="summary"><span class="ico"><svg><use href="#i-file"/></svg></span><div><div class="v">vpn.example.com</div><div class="m">TCP 443 · asks for authenticator code</div></div></div>
+              <div class="btns"><span class="btn tone"><svg><use href="#i-file"/></svg>Import file</span><span class="btn line"><svg><use href="#i-edit"/></svg>Edit text</span></div>
+            </div>
+            <div class="sect">Sign-in</div>
+            <div class="field"><label for="u-6">Username</label><div class="input" id="u-6"><span class="val">alex</span></div></div>
+            <div class="field"><label for="p-6">Password</label><div class="input focus" id="p-6"><span class="val">••••••••••</span><svg><use href="#i-eye"/></svg></div><div class="help">Leave both empty if the profile uses only a certificate.</div></div>
+            <div class="foot"><svg style="width:13px;height:13px;vertical-align:-2px"><use href="#i-lock"/></svg> Saved on this phone only</div>
+          </div>
+        </div>
+        <figcaption>
+          <span class="num">6 · OPENVPN PROFILE</span>
+          <ul>
+            <li>"Import file" is today's file picker. "Edit text" opens the same monospace editor, full screen.</li>
+            <li>Password gets a show/hide eye.</li>
+            <li>Footer is honest: stored unencrypted in app-private storage, as the README says.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- 7 openvpn edit text -->
+      <figure>
+        <div class="phone" role="img" aria-label="OpenVPN profile text editor">
+          <div class="sb"><span>9:41</span><span class="r"><span class="bat"></span></span></div>
+          <div class="bar sub"><span class="ib"><svg><use href="#i-back"/></svg></span><span class="t">Profile text</span><span class="tb">Done</span></div>
+          <div class="body">
+            <div class="input mono focus" style="flex:1">client<br>dev tun<br>proto tcp<br>remote vpn.example.com 443<br>auth-user-pass<br>static-challenge "Enter code" 1<br>tls-version-min 1.3<br>cipher AES-256-GCM<br>&lt;ca&gt;<br>-----BEGIN CERTIFICATE-----<br>MIIDSzCCAjOgAwIBAgIUQ4t…<br>…<br>-----END CERTIFICATE-----<br>&lt;/ca&gt;<br>&lt;tls-crypt-v2&gt;<br>…</div>
+            <div class="help">Paste a full profile. Inline &lt;ca&gt;, &lt;cert&gt;, &lt;key&gt;, &lt;tls-auth&gt;, &lt;tls-crypt&gt; and &lt;tls-crypt-v2&gt; work.</div>
+          </div>
+        </div>
+        <figcaption>
+          <span class="num">7 · PROFILE TEXT</span>
+          <ul>
+            <li>Today's profile box, but with the whole screen instead of 8 lines.</li>
+            <li>Still no saved view state, so the 1 MB background crash fix stays.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- 8 vless -->
+      <figure>
+        <div class="phone" role="img" aria-label="VLESS server screen">
+          <div class="sb"><span>9:41</span><span class="r"><span class="bat"></span></span></div>
+          <div class="bar sub"><span class="ib"><svg><use href="#i-back"/></svg></span><span class="t">VLESS server</span></div>
+          <div class="body">
+            <div class="field">
+              <label for="v-8">Share link or Xray JSON config</label>
+              <div class="input mono" id="v-8" style="min-height:96px">vless://3f1c…e9a2@edge.example.net:443?type=ws&amp;security=tls&amp;sni=edge.example.net&amp;path=%2Fws&amp;host=edge.example.net#worker</div>
+            </div>
+            <div class="btns"><span class="btn tone"><svg><use href="#i-paste"/></svg>Paste</span><span class="opt" style="align-self:center">optional</span></div>
+            <div class="card">
+              <div class="cap">From this link</div>
+              <dl class="kv">
+                <dt>Server</dt><dd>edge.example.net</dd>
+                <dt>Port</dt><dd>443</dd>
+                <dt>Transport</dt><dd>WebSocket · /ws</dd>
+                <dt>Security</dt><dd>TLS</dd>
+                <dt>SNI</dt><dd>edge.example.net</dd>
+                <dt>Name</dt><dd>worker</dd>
+              </dl>
+            </div>
+            <div class="help">The server name may resolve only inside the OpenVPN network; that's fine.</div>
+          </div>
+        </div>
+        <figcaption>
+          <span class="num">8 · VLESS SERVER</span>
+          <ul>
+            <li>Summary is read-only, parsed from the link for display. The Go parser still validates on connect.</li>
+            <li>For a pasted JSON config the card says "Custom Xray config" instead.</li>
+            <li>Paste button reads the clipboard when tapped <span class="opt">optional</span>.</li>
+          </ul>
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ================= LOG + DARK ================= -->
+  <section class="section">
+    <header>
+      <h2>Log, dark theme, notification</h2>
+      <p>The log moves off the home screen. Dark theme uses the same layout with its own palette.</p>
+    </header>
+    <div class="row">
+
+      <!-- 9 log -->
+      <figure>
+        <div class="phone" role="img" aria-label="Log screen">
+          <div class="sb"><span>9:41</span><span class="r"><svg><use href="#i-key"/></svg><span class="bat"></span></span></div>
+          <div class="bar sub"><span class="ib"><svg><use href="#i-back"/></svg></span><span class="t">Log</span><span class="ib"><svg><use href="#i-copy"/></svg></span></div>
+          <div class="body">
+            <div class="chips"><span class="chip sel">All</span><span class="chip">OpenVPN</span><span class="chip">Xray</span></div>
+            <div class="log">
+              <div class="s">OpenVPN core 3.11.7; Xray-core 26.10.10</div>
+              <div class="o">openvpn event: RESOLVE</div>
+              <div class="o">openvpn: Contacting 203.0.113.7:443 via TCP</div>
+              <div class="o">openvpn event: WAIT</div>
+              <div class="o">openvpn event: CONNECTING</div>
+              <div class="o">openvpn: Tunnel Options:V4,dev-type tun,link-mtu…</div>
+              <div class="o">openvpn: SSL Handshake: TLSv1.3/TLS_AES_256_GCM_SHA384</div>
+              <div class="o">openvpn event: GET_CONFIG</div>
+              <div class="o">openvpn event: ASSIGN_IP</div>
+              <div class="s">OpenVPN tunnel: 10.8.0.6/24 dns=10.8.0.1 mtu=1500</div>
+              <div class="x">xray: [Warning] core: Xray 26.10.10 started</div>
+              <div class="o">openvpn event: CONNECTED alex@vpn.example.com:443</div>
+              <div class="x">xray: [Info] proxy/tun: tun started</div>
+              <div class="x">xray: from tcp:172.19.0.1:41822 accepted</div>
+              <div class="x">xray: from udp:172.19.0.1:53188 accepted</div>
+            </div>
+          </div>
+        </div>
+        <figcaption>
+          <span class="num">9 · LOG</span>
+          <ul>
+            <li>Same 400-line buffer, selectable, scrolls to the newest line.</li>
+            <li>Source colours come from the existing <code>openvpn:</code>/<code>xray:</code> prefixes.</li>
+            <li>Copy-all button <span class="opt">optional</span>, filter chips <span class="opt">optional</span>.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- 10 dark connected -->
+      <figure>
+        <div class="phone dark" role="img" aria-label="Home screen connected, dark theme">
+          <div class="sb"><span>9:41</span><span class="r"><svg><use href="#i-key"/></svg><span class="bat"></span></span></div>
+          <div class="bar"><span class="t">OpenVPN → VLESS</span><span class="ib"><svg><use href="#i-log"/></svg></span></div>
+          <div class="body">
+            <div class="hero">
+              <div class="toggle on"><span class="ring"></span><span class="core"><svg><use href="#i-power"/></svg></span></div>
+              <div class="state">Connected</div>
+              <div class="hint">Tap to disconnect</div>
+            </div>
+            <div class="card">
+              <div class="hop"><span class="dot ok"><svg><use href="#i-check"/></svg></span><div><div class="k">OpenVPN</div><div class="v">vpn.example.com</div><div class="m ok">Connected · 10.8.0.6</div></div><svg><use href="#i-chev"/></svg></div>
+              <div class="hop"><span class="dot ok"><svg><use href="#i-check"/></svg></span><div><div class="k">VLESS</div><div class="v">edge.example.net</div><div class="m ok">Connected · all apps</div></div><svg><use href="#i-chev"/></svg></div>
+            </div>
+            <div class="notice info"><svg><use href="#i-info"/></svg><span>All apps use this route. IPv6 is off while connected.</span></div>
+          </div>
+        </div>
+        <figcaption>
+          <span class="num">10 · DARK THEME</span>
+          <ul>
+            <li>Follows the system setting. On Android 12+ the accent could follow the wallpaper (Material You) instead of the fixed teal. See question 2.</li>
+          </ul>
+        </figcaption>
+      </figure>
+
+      <!-- 11 notification -->
+      <figure>
+        <div class="shade" role="img" aria-label="Notification while connected">
+          <div class="top"><svg viewBox="0 0 24 24"><circle cx="7.5" cy="12" r="4"/><path d="M11.5 12H21"/><path d="M18 12v3"/></svg>OpenVPN → VLESS · now</div>
+          <div class="tt">Connected</div>
+          <div class="tx">vpn.example.com → edge.example.net</div>
+          <div class="act">Disconnect</div>
+        </div>
+        <figcaption>
+          <span class="num">11 · NOTIFICATION</span>
+          <ul>
+            <li>Same notification and Disconnect action. Text shows the state and the two servers instead of the fixed "OpenVPN 3 → VLESS".</li>
+          </ul>
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ================= MAPPING ================= -->
+  <section class="section">
+    <header>
+      <h2>Where each current control goes</h2>
+      <p>Every control on today's screen has a place. Nothing is removed.</p>
+    </header>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Today</th><th>Proposed</th></tr></thead>
+        <tbody>
+          <tr><td>OpenVPN profile text box</td><td>OpenVPN profile → Edit text (7), summary on Home</td></tr>
+          <tr><td>Import .ovpn file</td><td>OpenVPN profile → Import file (6)</td></tr>
+          <tr><td>Username, password</td><td>OpenVPN profile → Sign-in (6), password show/hide</td></tr>
+          <tr><td>One-time code</td><td>Home, only for <code>static-challenge</code> profiles (2)</td></tr>
+          <tr><td>VLESS link or Xray JSON</td><td>VLESS server (8), summary on Home</td></tr>
+          <tr><td>Connect / Disconnect button</td><td>Round toggle on Home (1–5), also cancels while connecting</td></tr>
+          <tr><td>Status line (<code>connecting: get_config</code>)</td><td>Title and hint under the toggle, per-step dots (3–5)</td></tr>
+          <tr><td>Log</td><td>Log screen (9), from the Home app bar and "View log" on errors</td></tr>
+          <tr><td>Notification</td><td>Same, with clearer text (11)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= QUESTIONS ================= -->
+  <section class="section">
+    <header>
+      <h2>Questions before implementation</h2>
+    </header>
+    <div class="cols">
+      <div class="box">
+        <h3>1. Toolkit</h3>
+        <p>The app has no AndroidX today. My recommendation: keep it that way and build this with framework views, the DeviceDefault day/night theme and a few drawables. Material Components or Jetpack Compose would be quicker to style but add dependencies and APK size.</p>
+      </div>
+      <div class="box">
+        <h3>2. Accent colour</h3>
+        <p>Fixed teal (as sketched) everywhere, or the wallpaper colour on Android 12+ with teal on older phones?</p>
+      </div>
+      <div class="box">
+        <h3>3. Optional items</h3>
+        <p>Keep or drop: plain-language error text, Paste button, log Copy button, log filter chips.</p>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>
