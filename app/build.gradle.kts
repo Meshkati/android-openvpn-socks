@@ -52,6 +52,12 @@ android {
     }
 
     buildTypes {
+        // A separate app id lets a debug build (./gradlew installDebug) sit next to
+        // an installed release instead of clashing with its signing key.
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             isMinifyEnabled = false
             if (releaseKeystore != null) {

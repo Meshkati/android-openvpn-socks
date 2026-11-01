@@ -239,10 +239,13 @@ release installs over the previous one. The Release gets the APK, a `SHA256SUMS`
 and notes generated from the merged pull requests.
 
 The APK is signed with the release key from the repository's Actions secrets
-(`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`). Debug builds use
-a different key, so switching between a debug build and a release needs an uninstall,
-which clears the app's settings. A pull request that changes `release.yml` builds and
-signs the APK the same way, without publishing it.
+(`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`). A pull request
+that changes `release.yml` builds and signs the APK the same way, without publishing it.
+
+Debug builds are signed with a different key, so they use their own app id,
+`io.github.meshkati.ovpnvless.debug`, and show up as "OpenVPN → VLESS (debug)". A
+release and `./gradlew installDebug` can be installed side by side, each with its own
+settings. Android runs one VPN at a time, so connecting one disconnects the other.
 
 ## Using the app
 
