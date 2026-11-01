@@ -87,7 +87,8 @@ object VpnState {
         main.post { observers -= o }
     }
 
-    private fun notifyObservers() {
+    /** Calls the observers on the main thread, e.g. after [IpCheck] changed. */
+    fun notifyObservers() {
         main.post { observers.toList().forEach { it() } }
     }
 }

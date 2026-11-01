@@ -4,9 +4,32 @@ import android.app.Activity
 import android.content.Context
 import android.graphics.drawable.Drawable
 import android.os.Build
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 import android.view.View
 import android.view.WindowInsets
 import kotlin.math.max
+
+/** Log lines, one per line, coloured by [LogLines] source; errors in red. */
+fun coloredLog(context: Context, lines: List<String>): CharSequence {
+    val out = SpannableStringBuilder()
+    for ((i, line) in lines.withIndex()) {
+        if (i > 0) out.append('\n')
+        val start = out.length
+        out.append(line)
+        val color = when {
+            LogLines.isError(line) -> R.color.log_error
+            else -> when (LogLines.source(line)) {
+                LogLines.Source.OPENVPN -> R.color.log_openvpn
+                LogLines.Source.XRAY -> R.color.log_xray
+                LogLines.Source.APP -> R.color.log_app
+            }
+        }
+        out.setSpan(ForegroundColorSpan(context.getColor(color)), start, out.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    }
+    return out
+}
 
 /** A drawable from the theme, e.g. android.R.attr.selectableItemBackground. */
 fun themeDrawable(context: Context, attr: Int): Drawable? {
