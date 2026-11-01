@@ -147,6 +147,76 @@
                     android:textColor="@color/muted"
                     android:textSize="13sp" />
             </LinearLayout>
+
+            <!-- Public IP check, connected through VLESS only -->
+            <LinearLayout
+                android:id="@+id/ip_box"
+                style="@style/Card"
+                android:layout_marginTop="16dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="16dp"
+                android:visibility="gone">
+
+                <TextView
+                    style="@style/Text.Caption"
+                    android:paddingStart="0dp"
+                    android:paddingEnd="0dp"
+                    android:text="@string/ip_check_caption" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/ip_value"
+                            style="@style/Text"
+                            android:accessibilityLiveRegion="polite"
+                            android:fontFamily="sans-serif-medium"
+                            android:saveEnabled="false"
+                            android:textIsSelectable="true"
+                            android:textSize="20sp" />
+
+                        <TextView
+                            android:id="@+id/ip_meta"
+                            style="@style/Text"
+                            android:layout_marginTop="2dp"
+                            android:saveEnabled="false"
+                            android:textColor="@color/muted"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                    <Button
+                        android:id="@+id/check_ip"
+                        style="@style/Button.Line"
+                        android:layout_marginStart="12dp"
+                        android:text="@string/check_ip" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/ip_log"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:background="@drawable/bg_log"
+                    android:fontFamily="monospace"
+                    android:lineSpacingExtra="2dp"
+                    android:padding="12dp"
+                    android:saveEnabled="false"
+                    android:textColor="@color/log_text"
+                    android:textIsSelectable="true"
+                    android:textSize="11sp"
+                    android:visibility="gone" />
+            </LinearLayout>
         </LinearLayout>
     </ScrollView>
 </LinearLayout>
