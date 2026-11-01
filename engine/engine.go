@@ -64,12 +64,15 @@ func (logWriter) Close() error         { return nil }
 
 func logLine(s string) {
 	logMu.Lock()
-	l := logger
+	l, check := logger, checkLogger
 	logMu.Unlock()
 	if l != nil {
 		l.Log(s)
 	} else {
 		fmt.Fprintln(os.Stderr, s)
+	}
+	if check != nil {
+		check.Log("xray: " + s)
 	}
 }
 
@@ -163,6 +166,9 @@ func Stop() error {
 	defer mu.Unlock()
 	if instance == nil {
 		return nil
+	}
+	if checkCancel != nil {
+		checkCancel() // a running CheckIP must not dial once the tunnel dialer is gone
 	}
 	err := instance.Close()
 	internet.UseAlternativeSystemDialer(nil)

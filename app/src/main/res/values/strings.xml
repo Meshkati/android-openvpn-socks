@@ -83,6 +83,17 @@
     <string name="failure_other">The connection stopped.</string>
     <string name="profile_needed">Add an OpenVPN profile first.</string>
 
+    <!-- Home: public IP check -->
+    <string name="ip_check_caption">Public IP · as ifconfig.me sees it</string>
+    <string name="check_ip">Check IP</string>
+    <string name="check_ip_again">Check again</string>
+    <string name="ip_not_checked">Not checked</string>
+    <string name="ip_checking">Checking…</string>
+    <string name="ip_check_failed">Couldn\'t check</string>
+    <string name="ip_check_help">Asks ifconfig.me through VLESS, like your apps.</string>
+    <string name="ip_check_running">Asking ifconfig.me through VLESS</string>
+    <string name="ip_check_done">Through VLESS · %1$.1f s</string>
+
     <!-- Home: new release on GitHub -->
     <string name="update_available">Version %1$s is available</string>
     <string name="update_help">Download the APK from GitHub and open it to install it over this version. Your settings stay.</string>

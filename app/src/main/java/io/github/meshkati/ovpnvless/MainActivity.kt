@@ -14,6 +14,7 @@ import android.text.TextWatcher
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
@@ -21,8 +22,9 @@ import android.widget.Toast
 /**
  * Home: the connect toggle, the status, the route and, if needed, the
  * authenticator code. The route's VLESS step has a switch: off, or with no
- * VLESS server saved, the app connects with OpenVPN only. Below, a notice
- * when GitHub has a newer release.
+ * VLESS server saved, the app connects with OpenVPN only. Once connected
+ * through VLESS, a card checks the public IP ([IpCheck]) and shows its log.
+ * Below, a notice when GitHub has a newer release.
  */
 class MainActivity : Activity() {
 
@@ -45,6 +47,11 @@ class MainActivity : Activity() {
     private lateinit var otpHelp: TextView
     private lateinit var infoBox: View
     private lateinit var infoText: TextView
+    private lateinit var ipBox: View
+    private lateinit var ipValue: TextView
+    private lateinit var ipMeta: TextView
+    private lateinit var checkIp: Button
+    private lateinit var ipLog: TextView
     private lateinit var updateBox: View
     private lateinit var updateText: TextView
 
@@ -76,10 +83,16 @@ class MainActivity : Activity() {
         otpHelp = findViewById(R.id.otp_help)
         infoBox = findViewById(R.id.info_box)
         infoText = findViewById(R.id.info_text)
+        ipBox = findViewById(R.id.ip_box)
+        ipValue = findViewById(R.id.ip_value)
+        ipMeta = findViewById(R.id.ip_meta)
+        checkIp = findViewById(R.id.check_ip)
+        ipLog = findViewById(R.id.ip_log)
         updateBox = findViewById(R.id.update_box)
         updateText = findViewById(R.id.update_text)
 
         toggle.setOnClickListener { onToggle() }
+        checkIp.setOnClickListener { IpCheck.start() }
         hopOpenVpn.setOnClickListener { startActivity(Intent(this, OpenVpnActivity::class.java)) }
         hopVless.setOnClickListener { startActivity(Intent(this, VlessActivity::class.java)) }
         hopVless.switch.contentDescription = getString(R.string.use_vless)
@@ -286,6 +299,46 @@ class MainActivity : Activity() {
         infoText.setText(
             if (route == Route.VIA_VLESS) R.string.connected_info_vless else R.string.connected_info_openvpn
         )
+
+        // Public IP check. It needs the VLESS engine: with OpenVPN only, a
+        // request from this app (excluded from its own VPN) can't use the tunnel.
+        val canCheckIp = stage == Stage.CONNECTED && route == Route.VIA_VLESS
+        ipBox.visibility = if (canCheckIp) View.VISIBLE else View.GONE
+        if (canCheckIp) bindIpCheck()
+    }
+
+    private fun bindIpCheck() {
+        val check = IpCheck.state
+        setTextKeepingSelection(ipValue, when (check) {
+            IpCheck.State.IDLE -> getString(R.string.ip_not_checked)
+            IpCheck.State.RUNNING -> getString(R.string.ip_checking)
+            IpCheck.State.DONE -> IpCheck.result
+            IpCheck.State.FAILED -> getString(R.string.ip_check_failed)
+        })
+        ipValue.setTextColor(getColor(when (check) {
+            IpCheck.State.DONE -> R.color.ink
+            IpCheck.State.FAILED -> R.color.err
+            else -> R.color.muted
+        }))
+        ipMeta.text = when (check) {
+            IpCheck.State.IDLE -> getString(R.string.ip_check_help)
+            IpCheck.State.RUNNING -> getString(R.string.ip_check_running)
+            IpCheck.State.DONE -> getString(R.string.ip_check_done, IpCheck.millis / 1000.0)
+            IpCheck.State.FAILED -> IpCheck.result
+        }
+        checkIp.isEnabled = check != IpCheck.State.RUNNING
+        checkIp.alpha = if (checkIp.isEnabled) 1f else 0.45f
+        checkIp.setText(if (check == IpCheck.State.IDLE) R.string.check_ip else R.string.check_ip_again)
+
+        val lines = IpCheck.lines()
+        ipLog.visibility = if (lines.isEmpty()) View.GONE else View.VISIBLE
+        val text = lines.joinToString("\n")
+        if (text != ipLog.text.toString() && !ipLog.hasSelection()) ipLog.text = coloredLog(this, lines)
+    }
+
+    /** render() runs for every log line; replacing equal text would drop a selection. */
+    private fun setTextKeepingSelection(view: TextView, text: String) {
+        if (view.text.toString() != text) view.text = text
     }
 
     private fun bindOpenVpn(profile: ProfileInfo?, failure: Failure?) {

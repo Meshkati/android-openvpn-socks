@@ -97,6 +97,7 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         startForegroundNotification()
         vlessConfig = if (sessionRoute == Route.VIA_VLESS) settings.vless else ""
         VpnState.startSession(sessionRoute)
+        IpCheck.reset()
         VpnState.set(VpnState.Phase.CONNECTING, "starting OpenVPN")
         if (sessionRoute == Route.VIA_VLESS) {
             VpnState.log("${OpenVpn3.coreVersion()}; Xray-core ${Engine.xrayVersion()}")

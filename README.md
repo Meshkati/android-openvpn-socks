@@ -273,6 +273,16 @@ plain words, and your route: OpenVPN, then VLESS. Tap a step of the route to set
 4. Tap the round button and accept the VPN prompt. If connecting fails, the home screen
    says why and which step failed. The log (top-right icon) shows the OpenVPN 3 and Xray
    output, and can be filtered and copied.
+5. **Check IP**: once connected through VLESS, the home screen has a **Public IP** card.
+   **Check IP** asks `https://ifconfig.me/ip` and shows the address it sees, with the
+   full log of the request under it: the stream opened through Xray, the TLS handshake
+   and certificate, the request and response headers, the body, and any Xray lines
+   logged meanwhile. The same lines go to the log screen as `ip check: …`.
+   The app is excluded from its own VPN, so the request doesn't use the device TUN. The
+   Go engine sends it into Xray's routing (`core.Dial`), the way apps' traffic leaves,
+   and the VLESS server looks up `ifconfig.me`. With OpenVPN only there is no engine, and
+   this app's own sockets bypass the tunnel, so the card isn't shown. Open
+   ifconfig.me in a browser instead.
 
 The UI follows the system light/dark setting.
 
@@ -302,7 +312,9 @@ the old one; the settings stay.
 ## Testing
 
 * `cd engine && go test ./...` checks that Xray-core accepts every config the
-  `vless://` parser produces.
+  `vless://` parser produces, and runs the IP check through a real Xray instance
+  against a local HTTPS server (answer, log, bad answers, untrusted certificate).
+  The engine builds on Linux only (gVisor).
 * `./gradlew :app:testDebugUnitTest` runs the app's JVM unit tests: the profile and
   `vless://` summaries the UI shows, the mapping from OpenVPN events and errors
   to status text, the choice between the two routes, and the version comparison and
