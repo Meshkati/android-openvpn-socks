@@ -6,7 +6,7 @@ plugins {
 android {
     namespace = "io.github.meshkati.ovpnvless"
     compileSdk = 36
-    // Use a specific installed NDK: ./gradlew -PndkVersion=27.2.12479018 ...
+    // Pinned in gradle.properties; override with ./gradlew -PndkVersion=...
     providers.gradleProperty("ndkVersion").orNull?.let { ndkVersion = it }
 
     defaultConfig {
