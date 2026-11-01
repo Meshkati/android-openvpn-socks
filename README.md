@@ -220,7 +220,7 @@ Behind a filtered network where `dl.google.com` fails, `sdkmanager` takes
 
 The debug APK is attached to the run as an artifact (kept 14 days), so a branch can be
 installed with `adb install -r app-debug.apk` without building it locally. The
-end-to-end test in `hosttest/` needs root and is not run in CI yet.
+end-to-end tests in `hosttest/` need root and are not run in CI yet.
 
 ## Using the app
 
