@@ -7,3 +7,6 @@ local.properties
 .externalNativeBuild/
 app/libs/engine.aar
 app/libs/engine-sources.jar
+# Signing keys never belong in the repo (see Releases in README.md).
+*.jks
+*.keystore

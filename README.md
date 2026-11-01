@@ -222,6 +222,28 @@ The debug APK is attached to the run as an artifact (kept 14 days), so a branch 
 installed with `adb install -r app-debug.apk` without building it locally. The
 end-to-end tests in `hosttest/` need root and are not run in CI yet.
 
+### Releases
+
+Signed APKs are published on the
+[Releases](https://github.com/Meshkati/android-openvpn-socks/releases) page by
+`.github/workflows/release.yml`. To make a release, tag `main`:
+
+```sh
+git checkout main && git pull
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+The tag must be `vMAJOR.MINOR.PATCH` (each 0–99). It sets `versionName` to
+`MAJOR.MINOR.PATCH` and `versionCode` to `MAJOR*10000 + MINOR*100 + PATCH`, so each
+release installs over the previous one. The Release gets the APK, a `SHA256SUMS` file
+and notes generated from the merged pull requests.
+
+The APK is signed with the release key from the repository's Actions secrets
+(`KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`). Debug builds use
+a different key, so switching between a debug build and a release needs an uninstall,
+which clears the app's settings. A pull request that changes `release.yml` builds and
+signs the APK the same way, without publishing it.
+
 ## Using the app
 
 See [Screenshots](#screenshots) for every screen. The home screen has one round button that connects and disconnects, the status in
