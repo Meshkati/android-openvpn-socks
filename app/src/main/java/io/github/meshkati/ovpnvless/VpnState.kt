@@ -11,20 +11,51 @@ object VpnState {
     private const val MAX_LINES = 400
     private val main = Handler(Looper.getMainLooper())
     private val lines = ArrayDeque<String>()
-    private var observer: (() -> Unit)? = null
+
+    // Only touched on the main thread.
+    private val observers = mutableListOf<() -> Unit>()
 
     @Volatile
     var phase = Phase.DISCONNECTED
         private set
 
+    /**
+     * While connecting: the last OpenVPN event, lower-cased. After a
+     * disconnect: the error, or empty for a clean exit.
+     */
     @Volatile
     var detail = ""
+        private set
+
+    /** This session's OpenVPN tunnel address without prefix, e.g. "10.8.0.6", or empty. */
+    @Volatile
+    var tunnelAddress = ""
+        private set
+
+    /** Why this session's VLESS engine failed to start, or empty. */
+    @Volatile
+    var vlessError = ""
         private set
 
     fun set(phase: Phase, detail: String = "") {
         this.phase = phase
         this.detail = detail
-        notifyObserver()
+        notifyObservers()
+    }
+
+    /** Clears the per-session fields when a new session starts. */
+    fun startSession() {
+        tunnelAddress = ""
+        vlessError = ""
+    }
+
+    fun setTunnel(address: String) {
+        tunnelAddress = address
+        vlessError = ""
+    }
+
+    fun setVlessError(message: String) {
+        vlessError = message
     }
 
     fun log(line: String) {
@@ -33,20 +64,24 @@ object VpnState {
             lines.addLast(line.trimEnd())
             while (lines.size > MAX_LINES) lines.removeFirst()
         }
-        notifyObserver()
+        notifyObservers()
     }
 
-    fun logText(): String = synchronized(lines) { lines.joinToString("\n") }
+    fun logLines(): List<String> = synchronized(lines) { lines.toList() }
 
-    /** Sets the single UI observer (null to clear); it is called on the main thread. */
-    fun observe(o: (() -> Unit)?) {
+    /** Adds a UI observer; it is called on the main thread, once right away. */
+    fun addObserver(o: () -> Unit) {
         main.post {
-            observer = o
-            o?.invoke()
+            if (o !in observers) observers += o
+            o()
         }
     }
 
-    private fun notifyObserver() {
-        main.post { observer?.invoke() }
+    fun removeObserver(o: () -> Unit) {
+        main.post { observers -= o }
+    }
+
+    private fun notifyObservers() {
+        main.post { observers.toList().forEach { it() } }
     }
 }

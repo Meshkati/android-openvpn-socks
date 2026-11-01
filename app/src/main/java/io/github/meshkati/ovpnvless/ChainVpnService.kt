@@ -51,6 +51,9 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
     private var tun: ParcelFileDescriptor? = null
     private var vlessConfig = ""
 
+    // Notification text: "<OpenVPN server> → <VLESS server>".
+    private var route = ""
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_DISCONNECT) {
             disconnect()
@@ -73,11 +76,13 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
 
     @Synchronized
     private fun connect(otp: String) {
+        val settings = Settings(this)
+        route = routeText(settings)
         startForegroundNotification()
         if (session != null) return
 
-        val settings = Settings(this)
         vlessConfig = settings.vless
+        VpnState.startSession()
         VpnState.set(VpnState.Phase.CONNECTING, "starting OpenVPN")
         VpnState.log("${OpenVpn3.coreVersion()}; Xray-core ${Engine.xrayVersion()}")
         Engine.setLogger { line -> VpnState.log("xray: $line") }
@@ -116,8 +121,10 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         VpnState.log("openvpn event: $name $info")
         when (name) {
             "RECONNECTING", "RESOLVE", "WAIT", "CONNECTING", "GET_CONFIG", "ASSIGN_IP" ->
-                if (VpnState.phase != VpnState.Phase.DISCONNECTING)
+                if (VpnState.phase != VpnState.Phase.DISCONNECTING) {
+                    if (VpnState.phase == VpnState.Phase.CONNECTED) updateNotification(R.string.state_connecting)
                     VpnState.set(VpnState.Phase.CONNECTING, name.lowercase())
+                }
             "CONNECTED" -> if (tun != null) VpnState.set(VpnState.Phase.CONNECTED, info)
         }
     }
@@ -144,9 +151,12 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
                 .establish() ?: throw IllegalStateException("VPN permission is not granted")
             tun = pfd
             Engine.start(fd, addresses.joinToString(","), dns.joinToString(","), mtu, pfd.fd, vlessConfig)
+            VpnState.setTunnel(addresses.firstOrNull()?.substringBefore('/').orEmpty())
             VpnState.set(VpnState.Phase.CONNECTED, addresses.joinToString())
+            updateNotification(R.string.state_connected)
             true
         } catch (e: Exception) {
+            VpnState.setVlessError(e.message ?: e.toString())
             VpnState.log("failed to start VLESS: ${e.message}")
             tun?.close()
             tun = null
@@ -164,11 +174,33 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         tun = null
     }
 
+    private fun routeText(settings: Settings): String {
+        val openVpn = ProfileInfo.parse(settings.profile)?.host ?: getString(R.string.hop_openvpn)
+        val vless = (VlessConfig.parse(settings.vless) as? VlessConfig.Link)?.host ?: getString(R.string.hop_vless)
+        return getString(R.string.notification_route, openVpn, vless)
+    }
+
     private fun startForegroundNotification() {
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, getString(R.string.notification_channel), NotificationManager.IMPORTANCE_LOW)
         )
+        val notification = buildNotification(
+            if (VpnState.phase == VpnState.Phase.CONNECTED) R.string.state_connected else R.string.state_connecting
+        )
+        if (Build.VERSION.SDK_INT >= 34) {
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
+    }
+
+    /** Replaces the notification's title, e.g. when the tunnel comes up. */
+    private fun updateNotification(title: Int) {
+        getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, buildNotification(title))
+    }
+
+    private fun buildNotification(title: Int): Notification {
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
         )
@@ -176,18 +208,14 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
             this, 1, Intent(this, ChainVpnService::class.java).setAction(ACTION_DISCONNECT),
             PendingIntent.FLAG_IMMUTABLE
         )
-        val notification = Notification.Builder(this, CHANNEL_ID)
+        return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_vpn)
-            .setContentTitle(getString(R.string.app_name))
-            .setContentText("OpenVPN 3 → VLESS")
+            .setContentTitle(getString(title))
+            .setContentText(route)
             .setContentIntent(open)
             .addAction(Notification.Action.Builder(null, getString(R.string.disconnect), stop).build())
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
             .build()
-        if (Build.VERSION.SDK_INT >= 34) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
     }
 }

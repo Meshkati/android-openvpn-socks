@@ -105,7 +105,11 @@ app/                      Android app (Kotlin, no AndroidX)
   src/main/cpp/           OpenVPN 3 JNI library (CMake, fetches deps at configure time)
     chain_client.hpp      OpenVPN 3 client with socketpair "tun" (JNI-free)
     ovpn3_jni.cpp         JNI bridge to io.github.meshkati.ovpnvless.OpenVpn3
-  src/main/java/.../      MainActivity, ChainVpnService, OpenVpn3, VpnState, Settings
+  src/main/java/.../      ChainVpnService, OpenVpn3, VpnState, Settings, and the UI:
+                          MainActivity (home), OpenVpnActivity, ProfileTextActivity,
+                          VlessActivity, LogActivity
+  src/test/               JVM unit tests for the profile/link summaries and status text
+design/                   UI sketches and screenshots
 engine/                   Go: Xray-core + gVisor stack, gomobile API, vless:// parser
 scripts/build-engine.sh   gomobile bind → app/libs/engine.aar
 hosttest/                 Linux end-to-end test of the whole chain (no Android needed)
@@ -166,24 +170,44 @@ Behind a filtered network where `dl.google.com` fails, `sdkmanager` takes
 
 ## Using the app
 
-1. Paste or import your `.ovpn` profile. Inline `<ca>`, `<cert>`, `<key>`,
-   `<tls-auth>`, `<tls-crypt>` and `<tls-crypt-v2>` work. A username/password-only
-   profile (no client cert) also works.
-2. Enter the OpenVPN username/password if the profile has `auth-user-pass`.
-   If it has `static-challenge` (e.g. OpenVPN Access Server with an authenticator
-   app), also enter the current one-time code before each Connect.
-3. Paste a VLESS share link, for example
+<p>
+  <img src="design/screenshots/home-ready.png" width="180" alt="Home, ready to connect">
+  <img src="design/screenshots/home-connected.png" width="180" alt="Home, connected">
+  <img src="design/screenshots/openvpn-profile.png" width="180" alt="OpenVPN profile screen">
+  <img src="design/screenshots/vless-server.png" width="180" alt="VLESS server screen">
+</p>
+
+The home screen has one round button that connects and disconnects, the status in
+plain words, and your route: OpenVPN, then VLESS. Tap a step of the route to set it up.
+
+1. **OpenVPN profile**: tap **Import file**, or **Edit text** to paste the `.ovpn`.
+   Inline `<ca>`, `<cert>`, `<key>`, `<tls-auth>`, `<tls-crypt>` and `<tls-crypt-v2>`
+   work. A username/password-only profile (no client cert) also works. Enter the
+   username and password if the profile has `auth-user-pass`.
+2. **Authenticator code**: if the profile has `static-challenge` (e.g. OpenVPN Access
+   Server with an authenticator app), the home screen shows a code field. Enter the
+   current code before each connect. It is never stored.
+3. **VLESS server**: paste a share link, for example
    `vless://UUID@host:443?security=reality&sni=…&pbk=…&sid=…&fp=chrome&type=tcp&flow=xtls-rprx-vision`.
    Supported: `type=tcp|ws|grpc|httpupgrade|xhttp`, `security=none|tls|reality`.
    You can also paste a full Xray JSON config instead; it must contain a `tun` inbound.
    The VLESS host may be a name that only resolves inside the OpenVPN network. It is
-   resolved with the DNS servers OpenVPN pushes.
-4. Tap **Connect** and accept the VPN prompt. The log shows OpenVPN 3 and Xray output.
+   resolved with the DNS servers OpenVPN pushes. The screen shows what it read from the
+   link (server, port, transport, security) so you can check it.
+4. Tap the round button and accept the VPN prompt. If connecting fails, the home screen
+   says why and which step failed. The log (top-right icon) shows the OpenVPN 3 and Xray
+   output, and can be filtered and copied.
+
+The UI follows the system light/dark setting. The screenshots in `design/screenshots/`
+were rendered with Robolectric on a JVM, not captured on a phone.
 
 ## Testing
 
 * `cd engine && go test ./...` checks that Xray-core accepts every config the
   `vless://` parser produces.
+* `./gradlew :app:testDebugUnitTest` runs the app's JVM unit tests: the profile and
+  `vless://` summaries the UI shows, and the mapping from OpenVPN events and errors
+  to status text.
 * `sudo hosttest/run-e2e.sh` (Linux, needs `openvpn dnsmasq openssl python3 go cmake ninja`)
   runs the full chain on a PC. It starts an OpenVPN 2.6 server (user/pass + tls-crypt),
   a DNS server reachable only inside the tunnel, and an Xray **VLESS + REALITY + Vision**
