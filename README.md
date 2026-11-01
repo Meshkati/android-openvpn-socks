@@ -286,6 +286,29 @@ plain words, and your route: OpenVPN, then VLESS. Tap a step of the route to set
 
 The UI follows the system light/dark setting.
 
+### Updates
+
+The app is not on Google Play; new versions are on the
+[Releases](https://github.com/Meshkati/android-openvpn-socks/releases) page. When the
+home screen opens, the app asks GitHub for the latest release, at most once a day (an
+hour after a failed try). If it is newer than the installed version, the home screen
+shows a notice: **Download** opens the release page in the browser, **Later** hides
+the notice until a newer release comes out. Open the downloaded APK to install it over
+the old one; the settings stay.
+
+* The app only reads `api.github.com/repos/Meshkati/android-openvpn-socks/releases/latest`
+  over HTTPS. The request carries no account, device or settings, only a
+  `User-Agent: ovpnvless/<version> (Android)` header, which GitHub requires. GitHub sees
+  the phone's IP address. The app is excluded from its own VPN, so this request goes
+  over the normal network, connected or not.
+* It never downloads or installs anything itself. The link it opens is built from the
+  version number, so it always points at this repository. Android installs an update
+  only if it is signed with the same key as the installed app, so an APK from
+  somewhere else cannot replace it. To check a download by hand, compare its SHA-256
+  with the `SHA256SUMS` file in the release.
+* Only release builds (a `versionName` from a tag, like `0.2.0`) check. Debug and local
+  builds never do.
+
 ## Testing
 
 * `cd engine && go test ./...` checks that Xray-core accepts every config the
@@ -294,7 +317,8 @@ The UI follows the system light/dark setting.
   The engine builds on Linux only (gVisor).
 * `./gradlew :app:testDebugUnitTest` runs the app's JVM unit tests: the profile and
   `vless://` summaries the UI shows, the mapping from OpenVPN events and errors
-  to status text, and the choice between the two routes.
+  to status text, the choice between the two routes, and the version comparison and
+  timing of the update check.
 * `sudo hosttest/run-e2e.sh` (Linux, needs `openvpn dnsmasq openssl python3 go cmake ninja`)
   runs the full chain on a PC. It starts an OpenVPN 2.6 server (user/pass + tls-crypt),
   a DNS server reachable only inside the tunnel, and an Xray **VLESS + REALITY + Vision**

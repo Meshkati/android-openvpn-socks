@@ -94,6 +94,13 @@
     <string name="ip_check_running">Asking ifconfig.me through VLESS</string>
     <string name="ip_check_done">Through VLESS · %1$.1f s</string>
 
+    <!-- Home: new release on GitHub -->
+    <string name="update_available">Version %1$s is available</string>
+    <string name="update_help">Download the APK from GitHub and open it to install it over this version. Your settings stay.</string>
+    <string name="update_download">Download</string>
+    <string name="update_later">Later</string>
+    <string name="update_no_browser">No app can open the link. Go to %1$s</string>
+
     <!-- OpenVPN profile screen -->
     <string name="openvpn_title">OpenVPN profile</string>
     <string name="profile_none">No profile yet</string>
