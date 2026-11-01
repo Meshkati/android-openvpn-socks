@@ -66,6 +66,11 @@ android {
         }
     }
 
+    buildFeatures {
+        // BuildConfig.VERSION_NAME: the update check compares it with the latest release.
+        buildConfig = true
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

@@ -2,8 +2,10 @@ package io.github.meshkati.ovpnvless
 
 import android.Manifest
 import android.app.Activity
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
@@ -19,7 +21,8 @@ import android.widget.Toast
 /**
  * Home: the connect toggle, the status, the route and, if needed, the
  * authenticator code. The route's VLESS step has a switch: off, or with no
- * VLESS server saved, the app connects with OpenVPN only.
+ * VLESS server saved, the app connects with OpenVPN only. Below, a notice
+ * when GitHub has a newer release.
  */
 class MainActivity : Activity() {
 
@@ -42,12 +45,15 @@ class MainActivity : Activity() {
     private lateinit var otpHelp: TextView
     private lateinit var infoBox: View
     private lateinit var infoText: TextView
+    private lateinit var updateBox: View
+    private lateinit var updateText: TextView
 
     private var profile: ProfileInfo? = null
     private var vless: VlessConfig? = null
     private var username = ""
     private var useVless = true
     private var stage = Stage.NOT_SET_UP
+    private var update: Version? = null
     private val observer = { render() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,6 +76,8 @@ class MainActivity : Activity() {
         otpHelp = findViewById(R.id.otp_help)
         infoBox = findViewById(R.id.info_box)
         infoText = findViewById(R.id.info_text)
+        updateBox = findViewById(R.id.update_box)
+        updateText = findViewById(R.id.update_text)
 
         toggle.setOnClickListener { onToggle() }
         hopOpenVpn.setOnClickListener { startActivity(Intent(this, OpenVpnActivity::class.java)) }
@@ -85,6 +93,11 @@ class MainActivity : Activity() {
         val openLog = View.OnClickListener { startActivity(Intent(this, LogActivity::class.java)) }
         findViewById<View>(R.id.open_log).setOnClickListener(openLog)
         findViewById<View>(R.id.view_log).setOnClickListener(openLog)
+        findViewById<View>(R.id.update_download).setOnClickListener { update?.let(::openReleasePage) }
+        findViewById<View>(R.id.update_later).setOnClickListener {
+            update?.let { settings.dismissedRelease = "v$it" }
+            showUpdate()
+        }
 
         otp.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_GO) {
@@ -109,6 +122,8 @@ class MainActivity : Activity() {
         username = settings.username
         useVless = settings.useVless
         VpnState.addObserver(observer)
+        showUpdate()
+        checkForUpdate()
     }
 
     override fun onStop() {
@@ -163,6 +178,40 @@ class MainActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_VPN && resultCode == RESULT_OK) startVpnService()
+    }
+
+    /** Asks GitHub for the latest release, at most once a day (see [Updates]). */
+    private fun checkForUpdate() {
+        val installed = BuildConfig.VERSION_NAME
+        if (!Updates.checks(installed)) return
+        if (!Updates.isDue(System.currentTimeMillis(), settings.nextUpdateCheck)) return
+        // Counts as a failed try until it works, so returning to this screen or
+        // rotating it does not start a second request.
+        settings.nextUpdateCheck = System.currentTimeMillis() + Updates.INTERVAL_FAILED
+        Thread({
+            val tag = fetchLatestRelease("ovpnvless/$installed (Android)") ?: return@Thread
+            runOnUiThread {
+                settings.latestRelease = tag
+                settings.nextUpdateCheck = System.currentTimeMillis() + Updates.INTERVAL_OK
+                if (!isDestroyed) showUpdate()
+            }
+        }, "update-check").apply { isDaemon = true }.start()
+    }
+
+    private fun showUpdate() {
+        val offer = Updates.offer(BuildConfig.VERSION_NAME, settings.latestRelease, settings.dismissedRelease)
+        update = offer
+        updateBox.visibility = if (offer != null) View.VISIBLE else View.GONE
+        if (offer != null) updateText.text = getString(R.string.update_available, offer.toString())
+    }
+
+    private fun openReleasePage(version: Version) {
+        val url = Updates.releasePage(version)
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(this, getString(R.string.update_no_browser, url), Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun showOtpError(show: Boolean) {

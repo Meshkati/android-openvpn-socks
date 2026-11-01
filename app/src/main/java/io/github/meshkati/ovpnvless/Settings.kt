@@ -26,4 +26,19 @@ class Settings(context: Context) {
     var useVless: Boolean
         get() = prefs.getBoolean("use_vless", true)
         set(v) = prefs.edit().putBoolean("use_vless", v).apply()
+
+    /** The latest release tag GitHub reported, e.g. "v0.2.0". */
+    var latestRelease: String
+        get() = prefs.getString("latest_release", "")!!
+        set(v) = prefs.edit().putString("latest_release", v).apply()
+
+    /** The release the user tapped "Later" on: it is not shown again. */
+    var dismissedRelease: String
+        get() = prefs.getString("dismissed_release", "")!!
+        set(v) = prefs.edit().putString("dismissed_release", v).apply()
+
+    /** When the app may ask GitHub again, in milliseconds since the epoch. */
+    var nextUpdateCheck: Long
+        get() = prefs.getLong("next_update_check", 0)
+        set(v) = prefs.edit().putLong("next_update_check", v).apply()
 }
