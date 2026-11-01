@@ -3,6 +3,10 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// Release signing comes from the environment (CI secrets). Without it,
+// assembleRelease builds an unsigned APK, as before.
+val releaseKeystore = providers.environmentVariable("RELEASE_KEYSTORE").orNull
+
 android {
     namespace = "io.github.meshkati.ovpnvless"
     compileSdk = 36
@@ -13,8 +17,9 @@ android {
         applicationId = "io.github.meshkati.ovpnvless"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1"
+        // CI sets these from the release tag: -PversionCode=... -PversionName=...
+        versionCode = providers.gradleProperty("versionCode").orNull?.toInt() ?: 1
+        versionName = providers.gradleProperty("versionName").orNull ?: "0.1"
 
         ndk {
             // Keep in sync with the -target list in scripts/build-engine.sh.
@@ -35,9 +40,23 @@ android {
         }
     }
 
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = providers.environmentVariable("RELEASE_KEYSTORE_PASSWORD").orNull
+                keyAlias = providers.environmentVariable("RELEASE_KEY_ALIAS").orNull
+                keyPassword = providers.environmentVariable("RELEASE_KEY_PASSWORD").orNull
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (releaseKeystore != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
