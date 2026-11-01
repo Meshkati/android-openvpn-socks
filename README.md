@@ -181,11 +181,17 @@ Behind a filtered network where `dl.google.com` fails, `sdkmanager` takes
 
 ### CI
 
-Every pull request and every push to `main` runs `.github/workflows/ci.yml`: `go vet`
-and `go test` on `engine/`, the JVM unit tests, and a debug build. The debug APK is
-attached to the run as an artifact (kept 14 days), so a PR can be installed with
-`adb install -r app-debug.apk` without building it locally. The end-to-end test in
-`hosttest/` needs root and is not run in CI yet.
+`.github/workflows/ci.yml` has two jobs:
+
+* **Engine (Go)**: `go vet` and `go test` on `engine/`, on every pull request and every
+  push to `main`.
+* **Android app**: builds `engine.aar`, runs the JVM unit tests and builds the debug
+  APK. It runs on every push to `main`. For any other branch it is manual, so it never
+  holds up a pull request: Actions → CI → Run workflow, then pick the branch.
+
+The debug APK is attached to the run as an artifact (kept 14 days), so a branch can be
+installed with `adb install -r app-debug.apk` without building it locally. The
+end-to-end test in `hosttest/` needs root and is not run in CI yet.
 
 ## Using the app
 

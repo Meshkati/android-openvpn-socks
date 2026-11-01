@@ -36,8 +36,11 @@ jobs:
       - name: go test
         run: go test ./...
 
+  # Runs on every push to main. On other branches it is manual (Actions → CI →
+  # Run workflow), so the slow native build never holds up a pull request.
   app:
     name: Android app
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
