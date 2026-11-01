@@ -130,7 +130,8 @@ hosttest/                 Linux end-to-end test of the whole chain (no Android n
 ## Building
 
 Requirements: Android SDK with NDK and CMake 3.22.1 (Android Studio's SDK Manager),
-JDK 17+, Go ≥ 1.27, git (CMake clones the native dependencies).
+JDK 17+, Go ≥ 1.27, git (CMake clones the native dependencies). The NDK version is
+pinned in `gradle.properties` (`ndkVersion`); CI builds with the same one.
 
 ```sh
 export ANDROID_HOME=~/Android/Sdk          # and ANDROID_NDK_HOME if needed
@@ -149,10 +150,9 @@ brew install --cask android-commandlinetools
 export JAVA_HOME="$(brew --prefix openjdk@17)/libexec/openjdk.jdk/Contents/Home"
 export ANDROID_HOME="$HOME/Library/Android/sdk"
 
-# Android SDK packages, with the newest stable NDK
+# Android SDK packages, with the NDK pinned in gradle.properties
 yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses >/dev/null
-NDK_VER=$(sdkmanager --sdk_root="$ANDROID_HOME" --list 2>/dev/null \
-  | grep -oE 'ndk;[0-9]+\.[0-9]+\.[0-9]+ ' | sed 's/ndk;//; s/ //' | sort -V | tail -1)
+NDK_VER=30.0.16248370
 sdkmanager --sdk_root="$ANDROID_HOME" "platform-tools" "platforms;android-36" "cmake;3.22.1" "ndk;$NDK_VER"
 export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VER"
 export PATH="$ANDROID_HOME/platform-tools:$PATH"
@@ -162,7 +162,7 @@ git clone -b main https://github.com/Meshkati/android-openvpn-socks.git
 cd android-openvpn-socks
 echo "sdk.dir=$ANDROID_HOME" > local.properties
 scripts/build-engine.sh
-./gradlew :app:assembleDebug -PndkVersion="$NDK_VER"
+./gradlew :app:assembleDebug
 
 # Install: enable Developer options + USB debugging on the phone, plug it in,
 # accept the "Allow USB debugging" prompt, then:
@@ -170,8 +170,7 @@ adb devices
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-For day-to-day work, put the NDK version in `~/.gradle/gradle.properties` once
-(`ndkVersion=30.0.16248370`), and plain `./gradlew installDebug` builds and installs on
+For day-to-day work, plain `./gradlew installDebug` builds and installs on
 every connected device (USB or wireless debugging). `app/libs/engine.aar` is not built
 by Gradle: re-run `scripts/build-engine.sh` after changing `engine/`. It needs Go 1.27;
 with an older Go installed, `GOTOOLCHAIN=go1.27.2 scripts/build-engine.sh` works.
@@ -179,6 +178,20 @@ with an older Go installed, `GOTOOLCHAIN=go1.27.2 scripts/build-engine.sh` works
 Behind a filtered network where `dl.google.com` fails, `sdkmanager` takes
 `--proxy=http --proxy_host=… --proxy_port=…`, and Gradle reads
 `systemProp.https.proxyHost`/`proxyPort` from `~/.gradle/gradle.properties`.
+
+### CI
+
+`.github/workflows/ci.yml` has two jobs:
+
+* **Engine (Go)**: `go vet` and `go test` on `engine/`, on every pull request and every
+  push to `main`.
+* **Android app**: builds `engine.aar`, runs the JVM unit tests and builds the debug
+  APK. It runs on every push to `main`. For any other branch it is manual, so it never
+  holds up a pull request: Actions → CI → Run workflow, then pick the branch.
+
+The debug APK is attached to the run as an artifact (kept 14 days), so a branch can be
+installed with `adb install -r app-debug.apk` without building it locally. The
+end-to-end test in `hosttest/` needs root and is not run in CI yet.
 
 ## Using the app
 
