@@ -16,6 +16,18 @@ apps ─► VpnService TUN ─► Xray "tun" inbound ─► VLESS outbound
                       OpenVPN 3 core ─► UDP/TCP socket ─► OpenVPN server ─► VLESS server ─► internet
 ```
 
+## Screenshots
+
+| Ready | Connecting | Connected | Couldn't connect |
+|:---:|:---:|:---:|:---:|
+| <img src="design/screenshots/home-ready.png" width="180" alt="Home, ready to connect, with the authenticator code field"> | <img src="design/screenshots/home-connecting.png" width="180" alt="Home, connecting to OpenVPN"> | <img src="design/screenshots/home-connected.png" width="180" alt="Home, connected through OpenVPN and VLESS"> | <img src="design/screenshots/home-failed.png" width="180" alt="Home, OpenVPN rejected the sign-in"> |
+
+| OpenVPN profile | VLESS server | Log | Dark theme |
+|:---:|:---:|:---:|:---:|
+| <img src="design/screenshots/openvpn-profile.png" width="180" alt="OpenVPN profile screen"> | <img src="design/screenshots/vless-server.png" width="180" alt="VLESS server screen with the link summary"> | <img src="design/screenshots/log.png" width="180" alt="Log screen"> | <img src="design/screenshots/home-connected-dark.png" width="180" alt="Home, connected, dark theme"> |
+
+Rendered with Robolectric on a JVM, not captured on a phone.
+
 ## Why it is built this way
 
 Android allows one active `VpnService` TUN per app, and the TUN has to carry the
@@ -170,14 +182,7 @@ Behind a filtered network where `dl.google.com` fails, `sdkmanager` takes
 
 ## Using the app
 
-<p>
-  <img src="design/screenshots/home-ready.png" width="180" alt="Home, ready to connect">
-  <img src="design/screenshots/home-connected.png" width="180" alt="Home, connected">
-  <img src="design/screenshots/openvpn-profile.png" width="180" alt="OpenVPN profile screen">
-  <img src="design/screenshots/vless-server.png" width="180" alt="VLESS server screen">
-</p>
-
-The home screen has one round button that connects and disconnects, the status in
+See [Screenshots](#screenshots) for every screen. The home screen has one round button that connects and disconnects, the status in
 plain words, and your route: OpenVPN, then VLESS. Tap a step of the route to set it up.
 
 1. **OpenVPN profile**: tap **Import file**, or **Edit text** to paste the `.ovpn`.
@@ -198,8 +203,7 @@ plain words, and your route: OpenVPN, then VLESS. Tap a step of the route to set
    says why and which step failed. The log (top-right icon) shows the OpenVPN 3 and Xray
    output, and can be filtered and copied.
 
-The UI follows the system light/dark setting. The screenshots in `design/screenshots/`
-were rendered with Robolectric on a JVM, not captured on a phone.
+The UI follows the system light/dark setting.
 
 ## Testing
 
