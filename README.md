@@ -6,6 +6,10 @@ official **OpenVPN 3 core** library, then connects to a **VLESS** server
 REALITY and Vision are developed). It then gives the whole device VPN access
 over that chain.
 
+VLESS is optional. With no VLESS server saved, or with **Use VLESS** switched off
+on the home screen, the app is a plain OpenVPN client: OpenVPN 3 gets the device
+TUN with the addresses, routes and DNS its server pushes.
+
 ```
 apps ─► VpnService TUN ─► Xray "tun" inbound ─► VLESS outbound
                                                    │  (Xray's system dialer replaced)
@@ -26,7 +30,8 @@ apps ─► VpnService TUN ─► Xray "tun" inbound ─► VLESS outbound
 |:---:|:---:|:---:|:---:|
 | <img src="design/screenshots/openvpn-profile.png" width="180" alt="OpenVPN profile screen"> | <img src="design/screenshots/vless-server.png" width="180" alt="VLESS server screen with the link summary"> | <img src="design/screenshots/log.png" width="180" alt="Log screen"> | <img src="design/screenshots/home-connected-dark.png" width="180" alt="Home, connected, dark theme"> |
 
-Rendered with Robolectric on a JVM, not captured on a phone.
+Rendered with Robolectric on a JVM, not captured on a phone. They predate the
+**Use VLESS** switch, which now sits at the end of the VLESS row.
 
 ## Why it is built this way
 
@@ -49,7 +54,17 @@ apps' traffic into Xray. So OpenVPN never gets a real TUN:
 4. The app excludes itself from its own VPN (`addDisallowedApplication`), so
    OpenVPN's transport socket goes straight to the real network.
 
+Without VLESS (**OpenVPN only**), none of that is needed. `chain::Client` runs in
+`Mode::Device`: when OpenVPN 3 calls `tun_builder_establish()`, the service builds
+the device TUN from what the server pushed (addresses, routes, DNS servers and search
+domains) and returns its file descriptor, which OpenVPN 3 then reads and writes,
+as in any OpenVPN app. `redirect-gateway` becomes a `0.0.0.0/0` route; OpenVPN 3
+splits routes around excluded ones itself, since Android before 13 can't exclude
+routes. The app still excludes itself from the VPN, for the same reason.
+
 ## What goes through the tunnel
+
+### With VLESS
 
 The app is a full-device VPN: it uses Android's `VpnService` TUN, and everything it
 captures is sent to the VLESS server.
@@ -66,6 +81,20 @@ captures is sent to the VLESS server.
 
 Sniffing is on with `routeOnly: true`: Xray reads the domain from HTTP, TLS and QUIC
 for routing, but connects to the original destination IP.
+
+### OpenVPN only
+
+What the OpenVPN server pushes decides it, as with other OpenVPN apps:
+
+* **Routes.** With `redirect-gateway`, all IPv4 traffic goes through OpenVPN.
+  Otherwise only the pushed `route`s do, and everything else goes out directly.
+* **DNS.** The pushed DNS servers and search domains. If the profile redirects all
+  traffic but pushes no DNS server, apps get `8.8.8.8` and `8.8.4.4`, through the
+  tunnel.
+* **IPv6** follows the same rules if the server sets it up (`ifconfig-ipv6`,
+  `route-ipv6`, `redirect-gateway ipv6`). If it sets up no IPv6 at all, Android blocks
+  IPv6 while the VPN is up.
+* **Not this app's own traffic**, as above.
 
 ### TUN stack: gVisor
 
@@ -115,7 +144,7 @@ Notes on the choices:
 ```
 app/                      Android app (Kotlin, no AndroidX)
   src/main/cpp/           OpenVPN 3 JNI library (CMake, fetches deps at configure time)
-    chain_client.hpp      OpenVPN 3 client with socketpair "tun" (JNI-free)
+    chain_client.hpp      OpenVPN 3 client with socketpair or device TUN (JNI-free)
     ovpn3_jni.cpp         JNI bridge to io.github.meshkati.ovpnvless.OpenVpn3
   src/main/java/.../      ChainVpnService, OpenVpn3, VpnState, Settings, and the UI:
                           MainActivity (home), OpenVpnActivity, ProfileTextActivity,
@@ -124,7 +153,7 @@ app/                      Android app (Kotlin, no AndroidX)
 design/                   UI sketches and screenshots
 engine/                   Go: Xray-core + gVisor stack, gomobile API, vless:// parser
 scripts/build-engine.sh   gomobile bind → app/libs/engine.aar
-hosttest/                 Linux end-to-end test of the whole chain (no Android needed)
+hosttest/                 Linux end-to-end tests of both routes (no Android needed)
 ```
 
 ## Building
@@ -191,7 +220,7 @@ Behind a filtered network where `dl.google.com` fails, `sdkmanager` takes
 
 The debug APK is attached to the run as an artifact (kept 14 days), so a branch can be
 installed with `adb install -r app-debug.apk` without building it locally. The
-end-to-end test in `hosttest/` needs root and is not run in CI yet.
+end-to-end tests in `hosttest/` need root and are not run in CI yet.
 
 ## Using the app
 
@@ -205,13 +234,17 @@ plain words, and your route: OpenVPN, then VLESS. Tap a step of the route to set
 2. **Authenticator code**: if the profile has `static-challenge` (e.g. OpenVPN Access
    Server with an authenticator app), the home screen shows a code field. Enter the
    current code before each connect. It is never stored.
-3. **VLESS server**: paste a share link, for example
+3. **VLESS server** (optional): paste a share link, for example
    `vless://UUID@host:443?security=reality&sni=…&pbk=…&sid=…&fp=chrome&type=tcp&flow=xtls-rprx-vision`.
    Supported: `type=tcp|ws|grpc|httpupgrade|xhttp`, `security=none|tls|reality`.
    You can also paste a full Xray JSON config instead; it must contain a `tun` inbound.
    The VLESS host may be a name that only resolves inside the OpenVPN network. It is
    resolved with the DNS servers OpenVPN pushes. The screen shows what it read from the
    link (server, port, transport, security) so you can check it.
+   Once a VLESS server is saved, its row on the home screen has a **Use VLESS** switch.
+   Turn it off to connect with OpenVPN only and keep the VLESS setting for later. The
+   switch can be changed while disconnected, and the caption above the route says
+   which route the next connect uses.
 4. Tap the round button and accept the VPN prompt. If connecting fails, the home screen
    says why and which step failed. The log (top-right icon) shows the OpenVPN 3 and Xray
    output, and can be filtered and copied.
@@ -223,14 +256,21 @@ The UI follows the system light/dark setting.
 * `cd engine && go test ./...` checks that Xray-core accepts every config the
   `vless://` parser produces.
 * `./gradlew :app:testDebugUnitTest` runs the app's JVM unit tests: the profile and
-  `vless://` summaries the UI shows, and the mapping from OpenVPN events and errors
-  to status text.
+  `vless://` summaries the UI shows, the mapping from OpenVPN events and errors
+  to status text, and the choice between the two routes.
 * `sudo hosttest/run-e2e.sh` (Linux, needs `openvpn dnsmasq openssl python3 go cmake ninja`)
   runs the full chain on a PC. It starts an OpenVPN 2.6 server (user/pass + tls-crypt),
   a DNS server reachable only inside the tunnel, and an Xray **VLESS + REALITY + Vision**
   server that listens only on the tunnel address. It then runs the real `chain::Client`
   (OpenVPN 3 core) and the Go engine, and downloads files through SOCKS → VLESS → OpenVPN.
   It also checks that the VLESS server saw the client at its OpenVPN address.
+* `sudo hosttest/run-device-tun.sh` (Linux, needs `openvpn iproute2 openssl python3 curl
+  cmake ninja`) tests the OpenVPN-only route. It starts an OpenVPN 2.6 server
+  (client certificate only) in a network namespace that pushes a route, a DNS server
+  and a search domain, and an HTTP server reachable only through the tunnel. It runs
+  `chain::Client` in `Mode::Device` with a real Linux TUN, set up from the pushed
+  settings as the app does on Android. It then pings the server's tunnel address and
+  fetches a file through the TUN.
 
 ## Status and limitations
 
@@ -238,6 +278,8 @@ What was verified while writing this, on Linux x86_64:
 
 * `run-e2e.sh` passes. An 8 MB download arrives byte-identical through the real
   OpenVPN 3 core → socketpair → gVisor → Xray VLESS/REALITY/Vision chain.
+* `run-device-tun.sh` passes: in `Mode::Device` OpenVPN 3 reads and writes a real TUN
+  that was configured from the pushed route, DNS server and search domain.
 * The JNI library builds and links against the JDK. A JVM run under `-Xcheck:jni`
   driving the real OpenVPN 3 session works, using the compiled Kotlin `OpenVpn3`
   class: connect, `onTun`, stop from another thread, clean return.
@@ -248,7 +290,7 @@ Verified on a phone (Pixel 10 Pro, Android 16; built on macOS with AGP 8.13, NDK
 Go 1.27.2): an OpenVPN Access Server profile (TCP, `tls-crypt-v2`, authenticator
 code) connects with TLS 1.3, and a VLESS link (WebSocket + TLS via a Cloudflare Worker)
 carries all traffic. whatismyip.com in Chrome shows the VLESS exit for IPv4 and
-"IPv6: not detected".
+"IPv6: not detected". The OpenVPN-only route has not been tried on a phone yet.
 
 ### Fixed after the first run on a phone
 
@@ -283,12 +325,12 @@ Limitations of this minimal version:
 * No OpenVPN dynamic challenge (`CRV1`), private-key passphrase, or external PKI.
   Static challenge (`static-challenge`, e.g. authenticator codes) works, but the code
   must be typed for each Connect, so always-on VPN cannot start such a profile.
-* IPv6 is blocked while connected. Everything goes over IPv4 through VLESS.
+* With VLESS, IPv6 is blocked while connected. Everything goes over IPv4 through VLESS.
 * Credentials are stored unencrypted in app-private SharedPreferences.
-* Apps' DNS is fixed to `1.1.1.1` (carried over VLESS). There are no routing rules or
-  per-app selection; everything except this app goes through the chain.
-* OpenVPN `route`/`redirect-gateway` options are ignored. Only Xray uses the OpenVPN
-  tunnel, so routes have no effect.
+* With VLESS, apps' DNS is fixed to `1.1.1.1` (carried over VLESS). There are no routing
+  rules or per-app selection; everything except this app goes through the chain.
+* With VLESS, OpenVPN `route`/`redirect-gateway` options are ignored. Only Xray uses the
+  OpenVPN tunnel, so routes have no effect. OpenVPN only follows them.
 
 ## To do: leak checks
 
@@ -323,6 +365,10 @@ VLESS. Check these before relying on the app:
 - [ ] **Reconnects and network changes.** Check Wi-Fi ↔ mobile switches and OpenVPN
   `ping-restart`: `onTun` rebuilds the TUN and restarts the engine, so look for windows
   where traffic is not carried, and check that nothing falls back to the real network.
+- [ ] **OpenVPN only on a phone.** Try a `redirect-gateway` profile and a split one
+  (only `route`s): apps outside the routes should use Wi-Fi directly, the pushed DNS
+  should be used, IPv6 should be blocked when the server sets up none, and a
+  reconnect (Wi-Fi ↔ mobile, `ping-restart`) should keep the TUN.
 - [ ] **Exit IP consistency.** Check several IP services (TCP and HTTP/3), plus
   whatismyip.com showing "IPv6: not detected", after OS updates and with other VLESS
   servers, not only the Worker.

@@ -20,7 +20,7 @@
     <string name="state_failed">Couldn\'t connect</string>
 
     <!-- Home: hints under the title -->
-    <string name="hint_not_set_up">Add an OpenVPN profile and a VLESS server to connect.</string>
+    <string name="hint_not_set_up">Add an OpenVPN profile to connect. VLESS is optional.</string>
     <string name="hint_connect">Tap to connect</string>
     <string name="hint_disconnect">Tap to disconnect</string>
     <string name="hint_retry">Tap to try again</string>
@@ -35,13 +35,15 @@
     <string name="step_reconnecting">Reconnecting</string>
 
     <!-- Home: route card -->
-    <string name="route_caption">Your route · apps → OpenVPN → VLESS → internet</string>
+    <string name="route_caption_vless">Your route · apps → OpenVPN → VLESS → internet</string>
+    <string name="route_caption_openvpn">Your route · apps → OpenVPN → internet</string>
     <string name="hop_openvpn">OpenVPN</string>
     <string name="hop_vless">VLESS</string>
     <string name="hop_step">Step %1$d</string>
     <string name="add_openvpn">Add OpenVPN profile</string>
     <string name="add_openvpn_meta">Import a .ovpn file</string>
     <string name="add_vless">Add VLESS server</string>
+    <string name="add_vless_label">Optional</string>
     <string name="add_vless_meta">Paste a vless:// link</string>
     <string name="hop_connecting">Connecting…</string>
     <string name="hop_reconnecting">Reconnecting…</string>
@@ -52,6 +54,8 @@
     <string name="hop_not_started">Not started</string>
     <string name="hop_stopped">Stopped</string>
     <string name="hop_vless_failed">Couldn\'t start</string>
+    <string name="hop_vless_off">Off · OpenVPN only</string>
+    <string name="use_vless">Use VLESS</string>
     <string name="hop_sign_in_failed">Sign-in failed</string>
     <string name="hop_unreachable">Not reachable</string>
     <string name="hop_certificate">Certificate doesn\'t match</string>
@@ -66,7 +70,8 @@
     <string name="otp_missing">Enter the code first.</string>
 
     <!-- Home: notices -->
-    <string name="connected_info">All apps use this route. IPv6 is off while connected.</string>
+    <string name="connected_info_vless">All apps use this route. IPv6 is off while connected.</string>
+    <string name="connected_info_openvpn">Apps use the routes the OpenVPN server sends. IPv6 is off unless the server sets it up.</string>
     <string name="failure_profile">The OpenVPN profile can\'t be used. Open it to check it, or import it again.</string>
     <string name="failure_code_needed">Enter the authenticator code, then connect.</string>
     <string name="failure_credentials">OpenVPN needs a username and password. Add them to the OpenVPN profile.</string>
@@ -76,7 +81,7 @@
     <string name="failure_certificate">The OpenVPN server\'s certificate doesn\'t match the profile.</string>
     <string name="failure_vless">OpenVPN connected, but VLESS couldn\'t start. Check the VLESS link.</string>
     <string name="failure_other">The connection stopped.</string>
-    <string name="profile_and_vless_needed">Add an OpenVPN profile and a VLESS server first.</string>
+    <string name="profile_needed">Add an OpenVPN profile first.</string>
 
     <!-- OpenVPN profile screen -->
     <string name="openvpn_title">OpenVPN profile</string>

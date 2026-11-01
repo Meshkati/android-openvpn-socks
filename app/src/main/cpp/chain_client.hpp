@@ -1,12 +1,18 @@
-// OpenVPN 3 client whose "tun" is a socketpair instead of an Android TUN.
+// OpenVPN 3 client whose "tun" is either a socketpair or the device TUN.
 //
 // OpenVPN 3 core on Android talks to the OS through TunBuilderBase: it reports
 // addresses/routes/DNS and finally asks tun_builder_establish() for a file
-// descriptor carrying raw IP packets. We hand it one end of an AF_UNIX
-// datagram socketpair and give the other end, plus the pushed settings, to
-// the Listener. The Go engine attaches a userspace TCP/IP stack to that end,
-// so traffic it sends lands inside the OpenVPN tunnel without the device
-// routing table ever pointing at OpenVPN.
+// descriptor carrying raw IP packets. Two modes:
+//
+//   Mode::Chain   We hand it one end of an AF_UNIX datagram socketpair and
+//                 give the other end, plus the pushed settings, to the
+//                 Listener. The Go engine attaches a userspace TCP/IP stack to
+//                 that end, so traffic it sends lands inside the OpenVPN
+//                 tunnel without the device routing table ever pointing at
+//                 OpenVPN.
+//   Mode::Device  OpenVPN only, no VLESS: the Listener builds the device TUN
+//                 from the pushed settings (addresses, routes, DNS) and
+//                 OpenVPN 3 reads and writes it directly, like any OpenVPN app.
 //
 // No JNI in here, so the same class runs in the host test (hosttest/).
 #pragma once
@@ -51,20 +57,31 @@ inline std::string relax_tls_version_min(const std::string &profile, bool &chang
 }
 
 struct TunConfig {
-    std::vector<std::string> addresses;  // CIDR, e.g. "10.8.0.6/24"
-    std::vector<std::string> dns;        // pushed DNS server addresses
+    std::vector<std::string> addresses;       // CIDR, e.g. "10.8.0.6/24"
+    // CIDR, IPv4 and IPv6. redirect-gateway shows up as 0.0.0.0/0 or ::/0, or,
+    // on Android where the core emulates excluded routes, as the pieces of
+    // the address space left after cutting them out.
+    std::vector<std::string> routes;
+    std::vector<std::string> dns;             // pushed DNS server addresses
+    std::vector<std::string> search_domains;  // pushed DNS search domains
     int mtu = 1500;
 };
+
+enum class Mode { Chain, Device };
 
 class Listener {
 public:
     virtual ~Listener() = default;
     virtual void on_log(const std::string &line) = 0;
     virtual void on_event(const openvpn::ClientAPI::Event &ev) = 0;
-    // Called from tun_builder_establish(). fd is the app's end of the packet
-    // socketpair and belongs to the listener from now on. Returning false
-    // fails the connection.
+    // Mode::Chain, called from tun_builder_establish(). fd is the app's end of
+    // the packet socketpair and belongs to the listener from now on.
+    // Returning false fails the connection.
     virtual bool on_tun(int fd, const TunConfig &cfg) = 0;
+    // Mode::Device, called from tun_builder_establish(). Returns a TUN file
+    // descriptor configured as `cfg` says, which OpenVPN 3 owns from then on,
+    // or -1 to fail the connection.
+    virtual int on_device_tun(const TunConfig &cfg) = 0;
 };
 
 class Client : public openvpn::ClientAPI::OpenVPNClient {
@@ -88,6 +105,8 @@ public:
         for (const auto &[priority, server] : dns.servers)
             for (const auto &addr : server.addresses)
                 cfg_.dns.push_back(addr.address);
+        for (const auto &domain : dns.search_domains)
+            cfg_.search_domains.push_back(domain.domain);
         return true;
     }
 
@@ -97,12 +116,29 @@ public:
         return true;
     }
 
-    // Routes only matter for a kernel TUN; the userspace stack sends
-    // everything it dials into the tunnel.
+    // Routes only matter for the device TUN (Mode::Device); in Mode::Chain the
+    // userspace stack sends everything it dials into the tunnel.
+    bool tun_builder_reroute_gw(bool ipv4, bool ipv6, unsigned int) override {
+        if (ipv4)
+            cfg_.routes.push_back("0.0.0.0/0");
+        if (ipv6)
+            cfg_.routes.push_back("::/0");
+        return true;
+    }
+
+    bool tun_builder_add_route(const std::string &address, int prefix_length, int, bool) override {
+        cfg_.routes.push_back(address + "/" + std::to_string(prefix_length));
+        return true;
+    }
+
+    // Not called on Android: the core emulates excluded routes there by
+    // splitting the included ones (Android before 13 can't exclude routes).
+    bool tun_builder_exclude_route(const std::string &address, int prefix_length, int, bool) override {
+        listener_.on_log("ignoring excluded route " + address + "/" + std::to_string(prefix_length));
+        return true;
+    }
+
     bool tun_builder_set_remote_address(const std::string &, bool) override { return true; }
-    bool tun_builder_reroute_gw(bool, bool, unsigned int) override { return true; }
-    bool tun_builder_add_route(const std::string &, int, int, bool) override { return true; }
-    bool tun_builder_exclude_route(const std::string &, int, int, bool) override { return true; }
     bool tun_builder_set_session_name(const std::string &) override { return true; }
     bool tun_builder_add_proxy_bypass(const std::string &) override { return true; }
     bool tun_builder_set_proxy_auto_config_url(const std::string &) override { return true; }
@@ -111,6 +147,8 @@ public:
     bool tun_builder_add_wins_server(const std::string &) override { return true; }
 
     int tun_builder_establish() override {
+        if (mode_ == Mode::Device)
+            return listener_.on_device_tun(cfg_);
         int sv[2];
         if (socketpair(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0, sv) != 0) {
             listener_.on_log("socketpair failed");
@@ -157,7 +195,9 @@ public:
     // profile's static-challenge (e.g. an authenticator code). Returns "" on a
     // clean exit, otherwise an error message.
     std::string run(const std::string &profile, const std::string &username,
-                    const std::string &password, const std::string &response = {}) {
+                    const std::string &password, const std::string &response = {},
+                    Mode mode = Mode::Chain) {
+        mode_ = mode;
         openvpn::ClientAPI::Config config;
         bool relaxed = false;
         config.content = relax_tls_version_min(profile, relaxed);
@@ -167,6 +207,13 @@ public:
         config.guiVersion = "ovpn-vless-chain 0.1";
         config.tunPersist = true;  // keep the socketpair across reconnects
         config.dco = false;
+        // Mode::Device: a profile that redirects all traffic but pushes no DNS
+        // server gets 8.8.8.8 and 8.8.4.4, so apps' lookups don't go to a LAN
+        // resolver that is now behind the tunnel.
+        config.googleDnsFallback = mode == Mode::Device;
+        // Pushed DOMAIN options are search domains, as on Android (the
+        // default elsewhere is split DNS, which VpnService can't do).
+        config.dhcpSearchDomainsAsSplitDomains = false;
         auto eval = eval_config(config);
         if (!eval.error && eval.externalPki) {
             // OpenVPN 3 reads a profile without <cert>/<key> as "external
@@ -199,6 +246,7 @@ public:
 private:
     Listener &listener_;
     TunConfig cfg_;
+    Mode mode_ = Mode::Chain;
 };
 
 }  // namespace chain
