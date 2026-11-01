@@ -16,7 +16,11 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 
-/** Home: the connect toggle, the status, the route and, if needed, the authenticator code. */
+/**
+ * Home: the connect toggle, the status, the route and, if needed, the
+ * authenticator code. The route's VLESS step has a switch: off, or with no
+ * VLESS server saved, the app connects with OpenVPN only.
+ */
 class MainActivity : Activity() {
 
     companion object {
@@ -30,17 +34,19 @@ class MainActivity : Activity() {
     private lateinit var errorBox: View
     private lateinit var errorText: TextView
     private lateinit var errorRaw: TextView
-    private lateinit var routeCaption: View
+    private lateinit var routeCaption: TextView
     private lateinit var hopOpenVpn: HopView
     private lateinit var hopVless: HopView
     private lateinit var otpBox: View
     private lateinit var otp: EditText
     private lateinit var otpHelp: TextView
     private lateinit var infoBox: View
+    private lateinit var infoText: TextView
 
     private var profile: ProfileInfo? = null
     private var vless: VlessConfig? = null
     private var username = ""
+    private var useVless = true
     private var stage = Stage.NOT_SET_UP
     private val observer = { render() }
 
@@ -63,10 +69,19 @@ class MainActivity : Activity() {
         otp = findViewById(R.id.otp)
         otpHelp = findViewById(R.id.otp_help)
         infoBox = findViewById(R.id.info_box)
+        infoText = findViewById(R.id.info_text)
 
         toggle.setOnClickListener { onToggle() }
         hopOpenVpn.setOnClickListener { startActivity(Intent(this, OpenVpnActivity::class.java)) }
         hopVless.setOnClickListener { startActivity(Intent(this, VlessActivity::class.java)) }
+        hopVless.switch.contentDescription = getString(R.string.use_vless)
+        hopVless.switch.setOnCheckedChangeListener { _, checked ->
+            if (checked != useVless) {
+                useVless = checked
+                settings.useVless = checked
+                render()
+            }
+        }
         val openLog = View.OnClickListener { startActivity(Intent(this, LogActivity::class.java)) }
         findViewById<View>(R.id.open_log).setOnClickListener(openLog)
         findViewById<View>(R.id.view_log).setOnClickListener(openLog)
@@ -92,6 +107,7 @@ class MainActivity : Activity() {
         profile = ProfileInfo.parse(settings.profile)
         vless = VlessConfig.parse(settings.vless)
         username = settings.username
+        useVless = settings.useVless
         VpnState.addObserver(observer)
     }
 
@@ -104,7 +120,7 @@ class MainActivity : Activity() {
         when (stage) {
             Stage.READY, Stage.FAILED -> connect()
             Stage.CONNECTING, Stage.CONNECTED -> disconnect()
-            Stage.NOT_SET_UP -> Toast.makeText(this, R.string.profile_and_vless_needed, Toast.LENGTH_SHORT).show()
+            Stage.NOT_SET_UP -> Toast.makeText(this, R.string.profile_needed, Toast.LENGTH_SHORT).show()
             Stage.DISCONNECTING -> {}
         }
     }
@@ -160,8 +176,10 @@ class MainActivity : Activity() {
         val vless = vless
         val phase = VpnState.phase
         val detail = VpnState.detail
-        stage = Status.stage(phase, detail, ready = profile != null && vless != null)
+        stage = Status.stage(phase, detail, ready = profile != null)
         val failure = if (stage == Stage.FAILED) Status.failure(detail, VpnState.vlessError) else null
+        // While a session runs, show the route it was started with.
+        val route = if (phase == VpnState.Phase.DISCONNECTED) Route.choose(vless, useVless) else VpnState.route
 
         // Toggle, title and hint
         toggle.mode = when (stage) {
@@ -206,14 +224,19 @@ class MainActivity : Activity() {
         }
 
         // Route
-        routeCaption.visibility = if (stage == Stage.NOT_SET_UP) View.VISIBLE else View.GONE
+        routeCaption.setText(
+            if (route == Route.VIA_VLESS) R.string.route_caption_vless else R.string.route_caption_openvpn
+        )
         bindOpenVpn(profile, failure)
-        bindVless(vless, failure)
+        bindVless(vless, failure, route)
 
         // Authenticator code and connected note
         otpBox.visibility =
             if (profile?.challenge != null && (stage == Stage.READY || stage == Stage.FAILED)) View.VISIBLE else View.GONE
         infoBox.visibility = if (stage == Stage.CONNECTED) View.VISIBLE else View.GONE
+        infoText.setText(
+            if (route == Route.VIA_VLESS) R.string.connected_info_vless else R.string.connected_info_openvpn
+        )
     }
 
     private fun bindOpenVpn(profile: ProfileInfo?, failure: Failure?) {
@@ -246,14 +269,22 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun bindVless(vless: VlessConfig?, failure: Failure?) {
+    private fun bindVless(vless: VlessConfig?, failure: Failure?, route: Route) {
         val label = getString(R.string.hop_vless)
+        // The switch is for a saved VLESS setting, and only between sessions.
+        hopVless.showSwitch(vless != null)
+        hopVless.switch.isChecked = useVless
+        hopVless.switch.isEnabled = stage == Stage.NOT_SET_UP || stage == Stage.READY || stage == Stage.FAILED
         if (vless == null) {
-            hopVless.bind(2, getString(R.string.hop_step, 2), getString(R.string.add_vless),
+            hopVless.bind(2, getString(R.string.add_vless_label), getString(R.string.add_vless),
                 getString(R.string.add_vless_meta), HopView.State.ADD)
             return
         }
         val value = vlessName(this, vless)
+        if (route == Route.OPENVPN_ONLY) {
+            hopVless.bind(2, label, value, getString(R.string.hop_vless_off), HopView.State.OFF)
+            return
+        }
         val summary = vlessSummary(this, vless)
         when (stage) {
             Stage.CONNECTING -> hopVless.bind(2, label, value, getString(R.string.hop_waiting), HopView.State.IDLE)

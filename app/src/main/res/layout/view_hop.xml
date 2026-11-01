@@ -54,10 +54,28 @@
     </LinearLayout>
 
     <ImageView
+        android:id="@+id/hop_chevron"
         android:layout_width="20dp"
         android:layout_height="20dp"
         android:layout_marginStart="8dp"
         android:importantForAccessibility="no"
         android:src="@drawable/ic_chevron_right"
         android:tint="@color/muted" />
+
+    <!-- Instead of the chevron when the step can be switched off:
+         the row opens the step's screen, the switch turns it on or off. -->
+    <View
+        android:id="@+id/hop_divider"
+        android:layout_width="1dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="8dp"
+        android:background="@color/line"
+        android:visibility="gone" />
+
+    <Switch
+        android:id="@+id/hop_switch"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_marginStart="12dp"
+        android:visibility="gone" />
 </merge>

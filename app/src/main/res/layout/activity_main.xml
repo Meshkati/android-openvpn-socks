@@ -92,8 +92,7 @@
 
                 <TextView
                     android:id="@+id/route_caption"
-                    style="@style/Text.Caption"
-                    android:text="@string/route_caption" />
+                    style="@style/Text.Caption" />
 
                 <io.github.meshkati.ovpnvless.HopView
                     android:id="@+id/hop_openvpn"
@@ -141,10 +140,10 @@
                     android:tint="@color/muted" />
 
                 <TextView
+                    android:id="@+id/info_text"
                     style="@style/Text"
                     android:layout_width="0dp"
                     android:layout_weight="1"
-                    android:text="@string/connected_info"
                     android:textColor="@color/muted"
                     android:textSize="13sp" />
             </LinearLayout>

@@ -13,7 +13,7 @@ import engine.Engine
 import kotlin.concurrent.thread
 
 /**
- * Runs the chain:
+ * Runs the session's [Route]. With VLESS ([Route.VIA_VLESS]), the chain:
  *
  *   apps -> this VpnService's TUN -> Xray tun inbound -> VLESS
  *        -> userspace TCP/IP stack -> socketpair -> OpenVPN 3 -> network
@@ -21,8 +21,14 @@ import kotlin.concurrent.thread
  * OpenVPN 3 is started first. It never gets a real TUN: when it asks for one
  * (onTun) it receives a socketpair, and we pass the other end to the Go
  * engine, which dials the VLESS server through it. Only then is the device
- * TUN established, and Xray reads it. This app excludes itself from the VPN so
- * OpenVPN's own transport socket goes straight to the network.
+ * TUN established, and Xray reads it.
+ *
+ * OpenVPN only ([Route.OPENVPN_ONLY]): apps -> this VpnService's TUN ->
+ * OpenVPN 3 -> network. OpenVPN 3 asks for the TUN (onDeviceTun) and gets the
+ * device TUN, built with the addresses, routes and DNS its server pushed.
+ *
+ * Either way this app excludes itself from the VPN so OpenVPN's own transport
+ * socket goes straight to the network.
  */
 class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
 
@@ -51,6 +57,10 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
     private var tun: ParcelFileDescriptor? = null
     private var vlessConfig = ""
 
+    // The device TUN is up: built for Xray (VIA_VLESS) or handed to OpenVPN
+    // (OPENVPN_ONLY). Session thread only.
+    private var tunnelUp = false
+
     // Notification text: "<OpenVPN server> → <VLESS server>".
     private var route = ""
 
@@ -77,19 +87,30 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
     @Synchronized
     private fun connect(otp: String) {
         val settings = Settings(this)
-        route = routeText(settings)
-        startForegroundNotification()
-        if (session != null) return
+        if (session != null) {
+            startForegroundNotification()
+            return
+        }
 
-        vlessConfig = settings.vless
-        VpnState.startSession()
+        val sessionRoute = Route.choose(VlessConfig.parse(settings.vless), settings.useVless)
+        route = routeText(settings, sessionRoute)
+        startForegroundNotification()
+        vlessConfig = if (sessionRoute == Route.VIA_VLESS) settings.vless else ""
+        VpnState.startSession(sessionRoute)
         VpnState.set(VpnState.Phase.CONNECTING, "starting OpenVPN")
-        VpnState.log("${OpenVpn3.coreVersion()}; Xray-core ${Engine.xrayVersion()}")
-        Engine.setLogger { line -> VpnState.log("xray: $line") }
+        if (sessionRoute == Route.VIA_VLESS) {
+            VpnState.log("${OpenVpn3.coreVersion()}; Xray-core ${Engine.xrayVersion()}")
+            Engine.setLogger { line -> VpnState.log("xray: $line") }
+        } else {
+            VpnState.log("${OpenVpn3.coreVersion()}; OpenVPN only, VLESS is off")
+        }
 
         session = thread(name = "openvpn3") {
             val error = try {
-                OpenVpn3.run(settings.profile, settings.username, settings.password, otp, this)
+                OpenVpn3.run(
+                    settings.profile, settings.username, settings.password, otp,
+                    deviceTun = sessionRoute == Route.OPENVPN_ONLY, callbacks = this,
+                )
             } catch (e: Throwable) {
                 e.toString()
             }
@@ -125,7 +146,7 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
                     if (VpnState.phase == VpnState.Phase.CONNECTED) updateNotification(R.string.state_connecting)
                     VpnState.set(VpnState.Phase.CONNECTING, name.lowercase())
                 }
-            "CONNECTED" -> if (tun != null) VpnState.set(VpnState.Phase.CONNECTED, info)
+            "CONNECTED" -> if (tunnelUp) VpnState.set(VpnState.Phase.CONNECTED, info)
         }
     }
 
@@ -151,9 +172,7 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
                 .establish() ?: throw IllegalStateException("VPN permission is not granted")
             tun = pfd
             Engine.start(fd, addresses.joinToString(","), dns.joinToString(","), mtu, pfd.fd, vlessConfig)
-            VpnState.setTunnel(addresses.firstOrNull()?.substringBefore('/').orEmpty())
-            VpnState.set(VpnState.Phase.CONNECTED, addresses.joinToString())
-            updateNotification(R.string.state_connected)
+            tunnelUp(addresses)
             true
         } catch (e: Exception) {
             VpnState.setVlessError(e.message ?: e.toString())
@@ -164,7 +183,47 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         }
     }
 
+    override fun onDeviceTun(
+        addresses: Array<String>, routes: Array<String>, dns: Array<String>, searchDomains: Array<String>, mtu: Int,
+    ): Int {
+        VpnState.log(
+            "OpenVPN tunnel: ${addresses.joinToString()} routes=${routes.joinToString()} " +
+                "dns=${dns.joinToString()} domains=${searchDomains.joinToString()} mtu=$mtu"
+        )
+        tunnelUp = false
+        return try {
+            val builder = Builder()
+                .setSession(getString(R.string.app_name))
+                .setMtu(mtu)
+                // Our own sockets (OpenVPN's transport) must bypass the TUN,
+                // or OpenVPN would try to tunnel through itself.
+                .addDisallowedApplication(packageName)
+            // An address family with no address or route here is blocked
+            // while the VPN is up (Android's default), e.g. IPv6 when the
+            // server sets up only IPv4.
+            for (a in addresses.map(Cidr::parse)) builder.addAddress(a.address, a.prefixLength)
+            for (r in routes.map(Cidr::parse)) builder.addRoute(r.address, r.prefixLength)
+            for (server in dns) builder.addDnsServer(server)
+            for (domain in searchDomains) builder.addSearchDomain(domain)
+            val pfd = builder.establish() ?: throw IllegalStateException("VPN permission is not granted")
+            tunnelUp(addresses)
+            pfd.detachFd() // OpenVPN 3 owns it now and closes it when the session ends
+        } catch (e: Exception) {
+            VpnState.log("failed to set up the VPN: ${e.message}")
+            -1
+        }
+    }
+
+    /** The device TUN is up: the session is connected. */
+    private fun tunnelUp(addresses: Array<String>) {
+        tunnelUp = true
+        VpnState.setTunnel(addresses.firstOrNull()?.substringBefore('/').orEmpty())
+        VpnState.set(VpnState.Phase.CONNECTED, addresses.joinToString())
+        updateNotification(R.string.state_connected)
+    }
+
     private fun stopEngine() {
+        tunnelUp = false
         try {
             Engine.stop()
         } catch (e: Exception) {
@@ -174,8 +233,9 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         tun = null
     }
 
-    private fun routeText(settings: Settings): String {
+    private fun routeText(settings: Settings, route: Route): String {
         val openVpn = ProfileInfo.parse(settings.profile)?.host ?: getString(R.string.hop_openvpn)
+        if (route == Route.OPENVPN_ONLY) return openVpn
         val vless = (VlessConfig.parse(settings.vless) as? VlessConfig.Link)?.host ?: getString(R.string.hop_vless)
         return getString(R.string.notification_route, openVpn, vless)
     }

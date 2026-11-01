@@ -90,6 +90,9 @@ public:
         on_log_ = env->GetMethodID(cls, "onLog", "(Ljava/lang/String;)V");
         on_event_ = env->GetMethodID(cls, "onEvent", "(Ljava/lang/String;Ljava/lang/String;ZZ)V");
         on_tun_ = env->GetMethodID(cls, "onTun", "(I[Ljava/lang/String;[Ljava/lang/String;I)Z");
+        on_device_tun_ = env->GetMethodID(
+            cls, "onDeviceTun",
+            "([Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/String;I)I");
         env->DeleteLocalRef(cls);
     }
 
@@ -142,11 +145,32 @@ public:
         return ok;
     }
 
+    int on_device_tun(const chain::TunConfig &cfg) override {
+        JNIEnv *env = env_for_thread();
+        if (!env)
+            return -1;
+        jobjectArray addrs = to_jarray(env, cfg.addresses);
+        jobjectArray routes = to_jarray(env, cfg.routes);
+        jobjectArray dns = to_jarray(env, cfg.dns);
+        jobjectArray domains = to_jarray(env, cfg.search_domains);
+        jint fd = env->CallIntMethod(callbacks_, on_device_tun_, addrs, routes, dns, domains, cfg.mtu);
+        env->DeleteLocalRef(addrs);
+        env->DeleteLocalRef(routes);
+        env->DeleteLocalRef(dns);
+        env->DeleteLocalRef(domains);
+        if (env->ExceptionCheck()) {
+            clear_exception(env);
+            return -1;
+        }
+        return fd;  // Kotlin detached it from its ParcelFileDescriptor
+    }
+
 private:
     jobject callbacks_;
     jmethodID on_log_;
     jmethodID on_event_;
     jmethodID on_tun_;
+    jmethodID on_device_tun_;
 };
 
 }  // namespace
@@ -167,11 +191,12 @@ extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *) {
 }
 
 // fun run(profile: String, username: String, password: String, response: String,
-//         callbacks: Callbacks): String?
+//         deviceTun: Boolean, callbacks: Callbacks): String?
 extern "C" JNIEXPORT jstring JNICALL
 Java_io_github_meshkati_ovpnvless_OpenVpn3_run(JNIEnv *env, jobject, jstring profile,
                                                jstring username, jstring password,
-                                               jstring response, jobject callbacks) {
+                                               jstring response, jboolean device_tun,
+                                               jobject callbacks) {
     JniListener listener(env, callbacks);
     chain::Client client(listener);
     {
@@ -184,7 +209,8 @@ Java_io_github_meshkati_ovpnvless_OpenVpn3_run(JNIEnv *env, jobject, jstring pro
     std::string err;
     try {
         err = client.run(from_jstring(env, profile), from_jstring(env, username),
-                         from_jstring(env, password), from_jstring(env, response));
+                         from_jstring(env, password), from_jstring(env, response),
+                         device_tun ? chain::Mode::Device : chain::Mode::Chain);
     } catch (const std::exception &e) {
         err = e.what();
     }

@@ -21,4 +21,9 @@ class Settings(context: Context) {
     var vless: String
         get() = prefs.getString("vless", "")!!
         set(v) = prefs.edit().putString("vless", v).apply()
+
+    /** The "Use VLESS" switch. Off means OpenVPN only, even with a VLESS setting saved. */
+    var useVless: Boolean
+        get() = prefs.getBoolean("use_vless", true)
+        set(v) = prefs.edit().putBoolean("use_vless", v).apply()
 }

@@ -8,7 +8,7 @@ import android.graphics.Path
 import android.util.AttributeSet
 import android.widget.LinearLayout
 
-/** The route card: [HopView]s joined by a dotted line between their dots. */
+/** The route card: [HopView]s joined by a dotted line between their dots, except switched-off ones. */
 class RouteCard(context: Context, attrs: AttributeSet?) : LinearLayout(context, attrs) {
 
     private val dp = resources.displayMetrics.density
@@ -29,7 +29,7 @@ class RouteCard(context: Context, attrs: AttributeSet?) : LinearLayout(context, 
     override fun dispatchDraw(canvas: Canvas) {
         super.dispatchDraw(canvas)
         val hops = (0 until childCount).map { getChildAt(it) }
-            .filterIsInstance<HopView>().filter { it.visibility == VISIBLE }
+            .filterIsInstance<HopView>().filter { it.visibility == VISIBLE && it.inRoute }
         path.reset()
         for ((a, b) in hops.zipWithNext()) {
             val x = a.left + a.dot.left + a.dot.width / 2f

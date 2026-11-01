@@ -32,6 +32,11 @@ object VpnState {
     var tunnelAddress = ""
         private set
 
+    /** The route of the current or last session. */
+    @Volatile
+    var route = Route.VIA_VLESS
+        private set
+
     /** Why this session's VLESS engine failed to start, or empty. */
     @Volatile
     var vlessError = ""
@@ -44,7 +49,8 @@ object VpnState {
     }
 
     /** Clears the per-session fields when a new session starts. */
-    fun startSession() {
+    fun startSession(route: Route) {
+        this.route = route
         tunnelAddress = ""
         vlessError = ""
     }
