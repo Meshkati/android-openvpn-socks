@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  engine:
+    name: Engine (Go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: engine/go.mod
+          cache-dependency-path: engine/go.sum
+
+      - name: go vet
+        run: go vet ./...
+
+      # The end-to-end test needs the e2e build tag and root (hosttest/run-e2e.sh),
+      # so it is not part of this run.
+      - name: go test
+        run: go test ./...
+
+  app:
+    name: Android app
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: engine/go.mod
+          cache-dependency-path: engine/go.sum
+
+      - name: Install Android SDK packages
+        id: sdk
+        run: |
+          ndk=$(sed -n 's/^ndkVersion=//p' gradle.properties)
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          (yes || true) | "$sdkmanager" --licenses > /dev/null
+          "$sdkmanager" "platforms;android-36" "cmake;3.22.1" "ndk;$ndk" > /dev/null
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/$ndk" >> "$GITHUB_ENV"
+          echo "ndk=$ndk" >> "$GITHUB_OUTPUT"
+
+      # engine.aar (gomobile, 3 ABIs) is the slowest part of the build and only
+      # changes with engine/, the build script or the NDK.
+      - name: Restore engine.aar
+        id: engine-cache
+        uses: actions/cache@v6
+        with:
+          path: |
+            app/libs/engine.aar
+            app/libs/engine-sources.jar
+          key: engine-aar-ndk${{ steps.sdk.outputs.ndk }}-${{ hashFiles('engine/**', 'scripts/build-engine.sh') }}
+
+      - name: Build engine.aar
+        if: steps.engine-cache.outputs.cache-hit != 'true'
+        run: scripts/build-engine.sh
+
+      - name: Unit tests
+        run: ./gradlew :app:testDebugUnitTest
+
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports
+          path: app/build/reports/tests/
+          if-no-files-found: ignore
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-debug-${{ github.sha }}
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

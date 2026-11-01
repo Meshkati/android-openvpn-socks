@@ -179,6 +179,14 @@ Behind a filtered network where `dl.google.com` fails, `sdkmanager` takes
 `--proxy=http --proxy_host=… --proxy_port=…`, and Gradle reads
 `systemProp.https.proxyHost`/`proxyPort` from `~/.gradle/gradle.properties`.
 
+### CI
+
+Every pull request and every push to `main` runs `.github/workflows/ci.yml`: `go vet`
+and `go test` on `engine/`, the JVM unit tests, and a debug build. The debug APK is
+attached to the run as an artifact (kept 14 days), so a PR can be installed with
+`adb install -r app-debug.apk` without building it locally. The end-to-end test in
+`hosttest/` needs root and is not run in CI yet.
+
 ## Using the app
 
 See [Screenshots](#screenshots) for every screen. The home screen has one round button that connects and disconnects, the status in
