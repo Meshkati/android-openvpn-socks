@@ -82,15 +82,28 @@ jobs:
       - name: Unit tests
         run: ./gradlew :app:testReleaseUnitTest
 
-      - name: Decode keystore
+      # Checks the secrets against the keystore before the build, with errors
+      # that say which one is wrong: Gradle's own error masks the alias.
+      - name: Decode and check keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
           if [[ -z "$KEYSTORE_BASE64" ]]; then
             echo "::error::The KEYSTORE_BASE64 secret is not set"
             exit 1
           fi
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          if ! listing=$(keytool -list -v -keystore "$RUNNER_TEMP/release.jks" -storepass "$KEYSTORE_PASSWORD"); then
+            echo "::error::Cannot open the keystore: check KEYSTORE_BASE64 and KEYSTORE_PASSWORD"
+            exit 1
+          fi
+          aliases=$(sed -n 's/^Alias name: //p' <<< "$listing")
+          if ! grep -qixF -- "$KEY_ALIAS" <<< "$aliases"; then
+            echo "::error::KEY_ALIAS (${#KEY_ALIAS} characters) is not a key in the keystore, which has: $(paste -sd, - <<< "$aliases")"
+            exit 1
+          fi
 
       - name: Build signed release APK
         env:
