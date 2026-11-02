@@ -148,7 +148,8 @@ app/                      Android app (Kotlin, no AndroidX)
     ovpn3_jni.cpp         JNI bridge to io.github.meshkati.ovpnvless.OpenVpn3
   src/main/java/.../      ChainVpnService, OpenVpn3, VpnState, Settings, and the UI:
                           MainActivity (home), OpenVpnActivity, ProfileTextActivity,
-                          VlessActivity, LogActivity, DonateActivity
+                          VlessActivity, LogActivity, DonateActivity, and the
+                          home-screen widgets (Widgets, WidgetState)
   src/test/               JVM unit tests for the profile/link summaries and status text
 design/                   UI sketches and screenshots
 engine/                   Go: Xray-core + gVisor stack, gomobile API, vless:// parser
@@ -286,6 +287,27 @@ plain words, and your route: OpenVPN, then VLESS. Tap a step of the route to set
 
 The UI follows the system light/dark setting.
 
+### Widgets
+
+Two home-screen widgets connect and disconnect without opening the app. Long-press the
+home screen, tap **Widgets**, and pick **VPN on/off** or **VPN route**.
+
+* **VPN on/off** (1×1) is just the round button. Filled green means connected through
+  OpenVPN *and* VLESS; a green outline means connected with OpenVPN only; orange spins
+  while connecting; red means the last try failed. Under the button, one dot for
+  OpenVPN and one for VLESS, joined by a line that turns solid green once both are
+  connected.
+* **VPN route** (4×2, can be made 3 wide) has the button, and both steps of the route as
+  on the home screen: server, then status (`Connected · 10.8.0.6`, `Waiting for OpenVPN`,
+  `Couldn't start`, …). The line between the steps turns solid green once both are
+  connected. After a **Check IP** on the home screen, the VLESS step shows **IP ✓**
+  (or **IP ✗**). Tapping anywhere but the button opens the app.
+
+The button opens the app instead of connecting when the app has to ask something
+first: the VPN permission, the authenticator code (the lock icon), or a profile when
+none is set up. The widgets are redrawn when the connection changes, so they don't
+wake the phone on a timer.
+
 ### Donate
 
 The coffee icon on the home screen opens **Buy me a coffee**: **A coffee** ($2.99),
@@ -358,7 +380,7 @@ learn the user's real IP and that they use this app.
   only (gVisor).
 * `./gradlew :app:testDebugUnitTest` runs the app's JVM unit tests: the profile and
   `vless://` summaries the UI shows, the mapping from OpenVPN events and errors
-  to status text, the choice between the two routes, the version comparison and
+  to status text, the choice between the two routes, what the widgets show in each state, the version comparison and
   timing of the update check, the donation amounts, and the crash report (reading a tombstone, hiding
   servers and addresses, cutting the GitHub link to size).
 * `sudo hosttest/run-e2e.sh` (Linux, needs `openvpn dnsmasq openssl python3 go cmake ninja`)
