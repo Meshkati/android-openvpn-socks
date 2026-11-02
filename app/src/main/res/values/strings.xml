@@ -17,6 +17,8 @@
     <string name="state_connecting">Connecting…</string>
     <string name="state_connected">Connected</string>
     <string name="state_disconnecting">Disconnecting…</string>
+    <string name="state_paused">Paused</string>
+    <string name="state_pausing">Pausing…</string>
     <string name="state_failed">Couldn\'t connect</string>
 
     <!-- Home: hints under the title -->
@@ -224,6 +226,13 @@
     <string name="notification_route">%1$s → %2$s</string>
     <!-- "Connected · Work": the state, then the profile, once there is more than one. -->
     <string name="notification_title">%1$s · %2$s</string>
+    <!-- Notification buttons: Pause stops the VPN but keeps the notification, Resume connects again. -->
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
+    <!-- The IP check's answer in the notification's header, e.g. "IP 203.0.113.7". -->
+    <string name="notification_ip">IP %1$s</string>
+    <string name="notification_ip_checking">Checking IP…</string>
+    <string name="notification_ip_failed">IP check failed</string>
 
     <!-- Profiles: a whole route saved under a name (Profiles.kt) -->
     <string name="profiles_title">Profiles</string>

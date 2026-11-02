@@ -317,6 +317,20 @@ the route to set it up for that profile; tap the profile to switch (see [Profile
 
 The UI follows the system light/dark setting.
 
+### Notification
+
+While the VPN runs, its notification shows the state and the route, with buttons:
+
+* **Pause** turns the VPN off but keeps the notification, now titled **Paused**, with
+  **Resume** to connect again (with the profile in use at that moment). A profile that
+  asks for an authenticator code opens the home screen instead, which asks for it.
+  While paused, the home screen and widgets show the VPN as off; connecting from there
+  also resumes.
+* **Check IP** (while connected) runs the home screen's [IP check](#using-the-app) and
+  shows the answer in the notification's header: `IP 203.0.113.7`, or
+  `IP check failed`. The home screen's card shows the same result and its log.
+* **Disconnect** ends the session and removes the notification, paused or not.
+
 ### Profiles
 
 A profile is a whole route saved under a name: the OpenVPN config with its username and
