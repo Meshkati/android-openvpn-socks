@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 1×1. Redrawn when the VPN state changes (Widgets), so no periodic updates. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_toggle_picker"
+    android:initialLayout="@layout/widget_toggle"
+    android:minWidth="40dp"
+    android:minHeight="40dp"
+    android:previewLayout="@layout/widget_toggle"
+    android:resizeMode="none"
+    android:targetCellWidth="1"
+    android:targetCellHeight="1"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

@@ -64,6 +64,25 @@
     <string name="hop_code_needed">Code needed</string>
     <string name="hop_description">%1$s: %2$s, %3$s</string>
 
+    <!-- Home-screen widgets -->
+    <string name="widget_toggle_name">VPN on/off</string>
+    <string name="widget_toggle_picker">Connect or disconnect with one tap. The two dots show OpenVPN and VLESS.</string>
+    <string name="widget_chain_name">VPN route</string>
+    <string name="widget_chain_picker">Connect or disconnect, and see whether OpenVPN and VLESS are both connected.</string>
+    <string name="widget_toggle_description">%1$s. %2$s</string>
+    <string name="widget_off">Off</string>
+    <string name="widget_connecting">Connecting</string>
+    <string name="widget_stopping">Stopping</string>
+    <string name="widget_openvpn_only">OpenVPN only</string>
+    <string name="widget_open_app">Open app</string>
+    <string name="widget_set_up">Set up</string>
+    <string name="widget_not_set_up">Not set up</string>
+    <string name="widget_vless_not_added">Not added · OpenVPN only</string>
+    <string name="widget_ip">IP</string>
+    <string name="widget_ip_checking">IP…</string>
+    <string name="widget_ip_ok_description">Public IP checked: %1$s</string>
+    <string name="widget_ip_failed_description">Couldn\'t check the public IP</string>
+
     <!-- Home: authenticator code -->
     <string name="otp_label">Authenticator code</string>
     <string name="otp_help">Your profile asks for a new code each time you connect.</string>

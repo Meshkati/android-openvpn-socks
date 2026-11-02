@@ -31,6 +31,9 @@ class MainActivity : Activity() {
 
     companion object {
         private const val REQUEST_VPN = 1
+
+        /** From a widget: connect as if the toggle was tapped (asks for the VPN permission or the code). */
+        const val EXTRA_CONNECT = "connect"
     }
 
     private lateinit var settings: Settings
@@ -69,6 +72,11 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        // A widget's request to connect is handled once, not again after a
+        // rotation or when the app is reopened from the recent apps.
+        if (savedInstanceState != null || intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) {
+            intent.removeExtra(EXTRA_CONNECT)
+        }
         edgeToEdge(findViewById(R.id.root))
         settings = Settings(this)
 
@@ -152,11 +160,38 @@ class MainActivity : Activity() {
         showCrash()
         showUpdate()
         checkForUpdate()
+        if (intent.getBooleanExtra(EXTRA_CONNECT, false)) {
+            intent.removeExtra(EXTRA_CONNECT) // not again when coming back to this screen
+            connectFromWidget()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent) // onStart, which follows, reads it
     }
 
     override fun onStop() {
         VpnState.removeObserver(observer)
+        // The setup screens and the VLESS switch may have changed what the widgets show.
+        Widgets.refresh(this)
         super.onStop()
+    }
+
+    /**
+     * A widget's button opens this screen when it can't connect by itself.
+     * With a code to enter, the code field gets the focus; otherwise this
+     * connects, asking for the VPN permission first if needed.
+     */
+    private fun connectFromWidget() {
+        render()
+        if (stage != Stage.READY && stage != Stage.FAILED) return
+        if (profile?.challenge != null && otp.text.isBlank()) {
+            otp.requestFocus()
+            otp.post { getSystemService(InputMethodManager::class.java).showSoftInput(otp, 0) }
+        } else {
+            connect()
+        }
     }
 
     private fun onToggle() {
@@ -485,16 +520,17 @@ class MainActivity : Activity() {
         Failure.VLESS -> R.string.failure_vless
         Failure.OTHER -> R.string.failure_other
     }
+}
 
-    private fun failureShort(failure: Failure?) = when (failure) {
-        Failure.PROFILE -> R.string.hop_profile_problem
-        Failure.CODE_NEEDED -> R.string.hop_code_needed
-        Failure.CREDENTIALS -> R.string.hop_sign_in_needed
-        Failure.SIGN_IN -> R.string.hop_sign_in_failed
-        Failure.UNREACHABLE -> R.string.hop_unreachable
-        Failure.CERTIFICATE -> R.string.hop_certificate
-        else -> R.string.hop_stopped
-    }
+/** A short reason for the OpenVPN step, e.g. "Sign-in failed". */
+fun failureShort(failure: Failure?) = when (failure) {
+    Failure.PROFILE -> R.string.hop_profile_problem
+    Failure.CODE_NEEDED -> R.string.hop_code_needed
+    Failure.CREDENTIALS -> R.string.hop_sign_in_needed
+    Failure.SIGN_IN -> R.string.hop_sign_in_failed
+    Failure.UNREACHABLE -> R.string.hop_unreachable
+    Failure.CERTIFICATE -> R.string.hop_certificate
+    else -> R.string.hop_stopped
 }
 
 /** "TCP 443 · alex": protocol, port and, if set, the username. */
