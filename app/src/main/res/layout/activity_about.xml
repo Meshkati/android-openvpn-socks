@@ -53,6 +53,21 @@
                 style="@style/Text.Hint"
                 android:layout_marginTop="4dp" />
 
+            <Button
+                android:id="@+id/update_check"
+                style="@style/Button.Line"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="20dp"
+                android:text="@string/update_check" />
+
+            <TextView
+                android:id="@+id/update_status"
+                style="@style/Text.Hint"
+                android:layout_marginTop="8dp"
+                android:accessibilityLiveRegion="polite"
+                android:visibility="gone" />
+
             <TextView
                 style="@style/Text.Section"
                 android:layout_marginTop="28dp"

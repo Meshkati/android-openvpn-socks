@@ -9,13 +9,15 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import engine.Engine
 
 /**
  * About: the app version and the versions of the two cores it is built with,
- * Xray-core (the Go engine) and OpenVPN 3 core (JNI), and a link to the source.
+ * Xray-core (the Go engine) and OpenVPN 3 core (JNI), a link to the source,
+ * and a check for a newer release that the user starts ([Updates]).
  */
 class AboutActivity : Activity() {
 
@@ -27,6 +29,11 @@ class AboutActivity : Activity() {
 
     private lateinit var xray: TextView
     private lateinit var openVpn: TextView
+    private lateinit var updateCheck: Button
+    private lateinit var updateStatus: TextView
+
+    /** The newer release the last check found: the button then opens its page. */
+    private var newer: Version? = null
     private var versions = About.Versions(BuildConfig.VERSION_NAME, null, null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,6 +49,13 @@ class AboutActivity : Activity() {
         findViewById<View>(R.id.back).setOnClickListener { finish() }
         findViewById<View>(R.id.copy).setOnClickListener { copy() }
         findViewById<View>(R.id.about_source).setOnClickListener { open(About.SOURCE_URL) }
+
+        updateCheck = findViewById(R.id.update_check)
+        updateStatus = findViewById(R.id.update_status)
+        updateCheck.setOnClickListener {
+            val version = newer
+            if (version != null) open(Updates.releasePage(version)) else checkForUpdate()
+        }
 
         val known = cores
         if (known != null) {
@@ -68,6 +82,47 @@ class AboutActivity : Activity() {
         versions = versions.copy(xray = cores.first, openVpn = cores.second)
         xray.text = cores.first ?: getString(R.string.about_unknown)
         openVpn.text = cores.second ?: getString(R.string.about_unknown)
+    }
+
+    /**
+     * Asks GitHub for the latest release now. A check that works also counts
+     * as the home screen's daily one, so its banner shows a newer release too.
+     */
+    private fun checkForUpdate() {
+        val installed = BuildConfig.VERSION_NAME
+        updateCheck.isEnabled = false
+        showStatus(getString(R.string.update_checking))
+        Thread({
+            val tag = fetchLatestRelease(Updates.userAgent(installed))
+            runOnUiThread {
+                if (tag != null) {
+                    val settings = Settings(this)
+                    settings.latestRelease = tag
+                    settings.nextUpdateCheck = System.currentTimeMillis() + Updates.INTERVAL_OK
+                }
+                if (!isDestroyed) showFound(Updates.found(installed, tag))
+            }
+        }, "update-check").apply { isDaemon = true }.start()
+    }
+
+    private fun showFound(found: Updates.Found) {
+        updateCheck.isEnabled = true
+        when (found) {
+            is Updates.Found.Newer -> {
+                newer = found.version
+                updateCheck.text = getString(R.string.update_download_version, found.version.toString())
+                showStatus(getString(R.string.update_available, found.version.toString()))
+            }
+            is Updates.Found.NotARelease ->
+                showStatus(getString(R.string.update_not_release, "v${found.latest}"))
+            Updates.Found.UpToDate -> showStatus(getString(R.string.update_up_to_date))
+            Updates.Found.Failed -> showStatus(getString(R.string.update_check_failed))
+        }
+    }
+
+    private fun showStatus(text: String) {
+        updateStatus.text = text
+        updateStatus.visibility = View.VISIBLE
     }
 
     private fun copy() {
