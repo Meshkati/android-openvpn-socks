@@ -102,9 +102,67 @@
                 style="@style/Card"
                 android:layout_marginTop="20dp">
 
-                <TextView
-                    android:id="@+id/route_caption"
-                    style="@style/Text.Caption" />
+                <!-- The profile in use; opens the profile picker (ProfilePicker). -->
+                <LinearLayout
+                    android:id="@+id/profile_header"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:gravity="center_vertical"
+                    android:minHeight="56dp"
+                    android:orientation="horizontal"
+                    android:paddingStart="12dp"
+                    android:paddingTop="6dp"
+                    android:paddingEnd="14dp"
+                    android:paddingBottom="6dp">
+
+                    <io.github.meshkati.ovpnvless.ProfileBadge
+                        android:id="@+id/profile_badge"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/profile_name"
+                            style="@style/Text"
+                            android:layout_width="match_parent"
+                            android:ellipsize="end"
+                            android:fontFamily="sans-serif-medium"
+                            android:maxLines="1"
+                            android:textSize="16sp" />
+
+                        <TextView
+                            android:id="@+id/profile_meta"
+                            style="@style/Text"
+                            android:layout_width="match_parent"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textColor="@color/muted"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="8dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_unfold"
+                        android:tint="@color/muted" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginEnd="16dp"
+                    android:layout_marginBottom="2dp"
+                    android:background="@color/line" />
 
                 <io.github.meshkati.ovpnvless.HopView
                     android:id="@+id/hop_openvpn"

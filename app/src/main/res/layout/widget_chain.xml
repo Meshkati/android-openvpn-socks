@@ -3,7 +3,8 @@
      two steps on the right, like the home screen's route card. The line
      between the steps' dots is drawn in three pieces (below the OpenVPN dot,
      between the rows, above the VLESS dot) and turns solid when both are
-     connected. Tapping anywhere but the button opens the app.
+     connected. Tapping anywhere but the button opens the app. Under the
+     button, the state and, with more than one profile, the profile in use.
      Drawn as Off; also the picker preview. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
@@ -67,6 +68,18 @@
             android:text="@string/widget_off"
             android:textColor="@color/ink"
             android:textSize="12sp" />
+
+        <!-- The profile in use, once there is more than one. -->
+        <TextView
+            android:id="@+id/widget_profile"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:maxLines="1"
+            android:textColor="@color/muted"
+            android:textSize="11sp"
+            android:visibility="gone" />
     </LinearLayout>
 
     <ImageView

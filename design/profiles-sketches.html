@@ -472,7 +472,7 @@ td.dim { color: var(--muted); }
             <li>Tap a row to open the profile (5). The ⋮ menu has Rename, Duplicate and Delete.</li>
             <li>Delete asks nothing; a snackbar offers Undo for a few seconds. The profile in use can't be deleted while connected.</li>
             <li>Duplicate makes "Travel NL 2" with everything copied, the quickest way to try another VLESS server with the same OpenVPN.</li>
-            <li>Drag to reorder <span class="opt">optional</span>. The picker uses the same order.</li>
+            <li>Reorder <span class="opt">optional</span>: built as Move up and Move down in the ⋮ menu instead of dragging. The picker uses the same order.</li>
           </ul>
         </figcaption>
       </figure>
@@ -498,7 +498,7 @@ td.dim { color: var(--muted); }
           <span class="num">5 · ONE PROFILE</span>
           <ul>
             <li>Name, then the same route rows as Home. They open today's OpenVPN and VLESS screens for this profile, so you can edit it without switching to it.</li>
-            <li>The setup screens show the profile's name under their title, so you know which one you're editing.</li>
+            <li>Once there is more than one profile, the setup screens show its name under their title, so you know which one you're editing.</li>
             <li>"Use this profile" switches to it and goes back to Home. On the profile in use it is replaced by an "In use" label.</li>
           </ul>
         </figcaption>
@@ -590,7 +590,7 @@ td.dim { color: var(--muted); }
         <figcaption>
           <span class="num">8 · 4×2 WIDGET</span>
           <ul>
-            <li>The profile name sits above the two steps. The button connects the profile in use.</li>
+            <li>As built, the profile name sits under the button, once there is more than one profile: the widget has no height to spare above the steps. The button connects the profile in use.</li>
             <li>The 1×1 widget has no room for a name and stays as it is.</li>
             <li>A profile per widget, chosen when you place it <span class="opt">optional</span>. See question 4.</li>
           </ul>
@@ -608,7 +608,7 @@ td.dim { color: var(--muted); }
         <figcaption>
           <span class="num">9 · NOTIFICATION</span>
           <ul>
-            <li>The title adds the profile name. The text and the Disconnect action are as today.</li>
+            <li>The title adds the profile name once there is more than one profile. The text and the Disconnect action are as today.</li>
           </ul>
         </figcaption>
       </figure>
@@ -686,7 +686,7 @@ td.dim { color: var(--muted); }
       </div>
       <div class="box">
         <h3>Deleting</h3>
-        <p>Deleting the profile in use switches to the first one left in the list. Deleting the last profile takes Home back to "Not set up". Undo brings back everything, password included.</p>
+        <p>Deleting the profile in use switches to the first one left in the list. The only profile can't be deleted, nor the one in use while connected. Undo brings back everything, password included.</p>
       </div>
       <div class="box">
         <h3>Privacy</h3>
@@ -703,7 +703,7 @@ td.dim { color: var(--muted); }
   <section class="section">
     <header>
       <h2>Questions before implementation</h2>
-      <p>The sketches show the first option of each. The line marked in green is my recommendation.</p>
+      <p>The sketches show the first option of each. The line marked in green is the recommendation, and is what the app now does.</p>
     </header>
     <div class="cols">
       <div class="box">

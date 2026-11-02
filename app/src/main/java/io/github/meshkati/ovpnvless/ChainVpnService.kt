@@ -9,6 +9,8 @@ import android.content.pm.ServiceInfo
 import android.net.ConnectivityManager
 import android.net.VpnService
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.ParcelFileDescriptor
 import engine.Engine
 import kotlin.concurrent.thread
@@ -33,12 +35,18 @@ import kotlin.concurrent.thread
  * so its own requests (the IP check) use the tunnel like other apps': OpenVPN's
  * socket is protected instead (onProtect), and its DNS lookups of the server
  * use the network under the VPN (underlyingNetwork).
+ *
+ * A session runs the profile in use when it starts ([Profiles]). Switching
+ * profiles while connected restarts it with the new one (ACTION_RECONNECT).
  */
 class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
 
     companion object {
         const val ACTION_CONNECT = "io.github.meshkati.ovpnvless.CONNECT"
         const val ACTION_DISCONNECT = "io.github.meshkati.ovpnvless.DISCONNECT"
+
+        /** Ends the running session, then connects again with the profile in use. */
+        const val ACTION_RECONNECT = "io.github.meshkati.ovpnvless.RECONNECT"
 
         // One-time code for the profile's static-challenge. Not stored: it is
         // only valid once.
@@ -57,6 +65,10 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
 
     private var session: Thread? = null
 
+    // Set by ACTION_RECONNECT: connect again once the session ends.
+    private var reconnecting = false
+    private val main = Handler(Looper.getMainLooper())
+
     // Only touched on the session thread (onTun runs inside OpenVpn3.run).
     private var tun: ParcelFileDescriptor? = null
     private var vlessConfig = ""
@@ -68,12 +80,17 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
     // Notification text: "<OpenVPN server> → <VLESS server>".
     private var route = ""
 
+    // Added to the notification's title, once there is more than one profile.
+    private var profileName = ""
+
     // Tracked during OpenVPN-only sessions; see underlyingNetwork().
     private val underlying by lazy { UnderlyingNetworks(getSystemService(ConnectivityManager::class.java)) }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_DISCONNECT) {
             disconnect()
+        } else if (intent?.action == ACTION_RECONNECT) {
+            reconnect()
         } else {
             // ACTION_CONNECT, or the system starting us for always-on VPN.
             connect(intent?.getStringExtra(EXTRA_OTP).orEmpty())
@@ -93,16 +110,17 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
 
     @Synchronized
     private fun connect(otp: String) {
-        val settings = Settings(this)
         if (session != null) {
             startForegroundNotification()
             return
         }
 
-        val sessionRoute = Route.choose(VlessConfig.parse(settings.vless), settings.useVless)
-        route = routeText(settings, sessionRoute)
+        val profile = Profiles.active(this)
+        val sessionRoute = Route.choose(VlessConfig.parse(profile.vless), profile.useVless)
+        route = routeText(profile, sessionRoute)
+        profileName = if (Profiles.ids(this).size > 1) profile.displayName(this) else ""
         startForegroundNotification()
-        vlessConfig = if (sessionRoute == Route.VIA_VLESS) settings.vless else ""
+        vlessConfig = if (sessionRoute == Route.VIA_VLESS) profile.vless else ""
         VpnState.startSession(sessionRoute)
         IpCheck.reset()
         if (sessionRoute == Route.OPENVPN_ONLY) underlying.start()
@@ -118,7 +136,7 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         session = thread(name = "openvpn3") {
             val error = try {
                 OpenVpn3.run(
-                    settings.profile, settings.username, settings.password, otp,
+                    profile.ovpn, profile.username, profile.password, otp,
                     deviceTun = sessionRoute == Route.OPENVPN_ONLY, callbacks = this,
                 )
             } catch (e: Throwable) {
@@ -127,17 +145,39 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
             VpnState.log(error?.let { "OpenVPN error: $it" } ?: "OpenVPN session ended")
             stopEngine()
             underlying.stop()
-            synchronized(this) { session = null }
+            val again = synchronized(this) {
+                session = null
+                reconnecting.also { reconnecting = false }
+            }
             // A result from the tunnel would read as the IP without the VPN.
             IpCheck.reset()
+            if (again) {
+                // Still in the foreground: connect() replaces the notification.
+                main.post { connect("") }
+                return@thread
+            }
             VpnState.set(VpnState.Phase.DISCONNECTED, error ?: "")
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
     }
 
+    /** Ends the session and starts a new one with the profile in use ([switchProfile]). */
+    @Synchronized
+    private fun reconnect() {
+        if (session == null) {
+            connect("")
+            return
+        }
+        startForegroundNotification()
+        reconnecting = true
+        VpnState.set(VpnState.Phase.DISCONNECTING)
+        OpenVpn3.stop() // run() returns, and the session thread connects again
+    }
+
     @Synchronized
     private fun disconnect() {
+        reconnecting = false
         if (session == null) {
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
@@ -250,10 +290,10 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         tun = null
     }
 
-    private fun routeText(settings: Settings, route: Route): String {
-        val openVpn = ProfileInfo.parse(settings.profile)?.host ?: getString(R.string.hop_openvpn)
+    private fun routeText(profile: Profile, route: Route): String {
+        val openVpn = ProfileInfo.parse(profile.ovpn)?.host ?: getString(R.string.hop_openvpn)
         if (route == Route.OPENVPN_ONLY) return openVpn
-        val vless = (VlessConfig.parse(settings.vless) as? VlessConfig.Link)?.host ?: getString(R.string.hop_vless)
+        val vless = (VlessConfig.parse(profile.vless) as? VlessConfig.Link)?.host ?: getString(R.string.hop_vless)
         return getString(R.string.notification_route, openVpn, vless)
     }
 
@@ -287,7 +327,10 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         )
         return Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_vpn)
-            .setContentTitle(getString(title))
+            .setContentTitle(
+                if (profileName.isEmpty()) getString(title)
+                else getString(R.string.notification_title, getString(title), profileName)
+            )
             .setContentText(route)
             .setContentIntent(open)
             .addAction(Notification.Action.Builder(null, getString(R.string.disconnect), stop).build())

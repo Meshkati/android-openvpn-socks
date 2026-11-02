@@ -22,10 +22,11 @@ import android.widget.Toast
 
 /**
  * Home: the connect toggle, the status, the route and, if needed, the
- * authenticator code. The route's VLESS step has a switch: off, or with no
- * VLESS server saved, the app connects with OpenVPN only. A card checks the
- * public IP ([IpCheck]), the way apps' traffic goes now, and shows its log.
- * Below, a notice when GitHub has a newer release.
+ * authenticator code. The route card starts with the profile in use; tapping
+ * it opens the profile picker ([ProfilePicker]). The route's VLESS step has a
+ * switch: off, or with no VLESS server saved, the app connects with OpenVPN
+ * only. A card checks the public IP ([IpCheck]), the way apps' traffic goes
+ * now, and shows its log. Below, a notice when GitHub has a newer release.
  */
 class MainActivity : Activity() {
 
@@ -43,7 +44,10 @@ class MainActivity : Activity() {
     private lateinit var errorBox: View
     private lateinit var errorText: TextView
     private lateinit var errorRaw: TextView
-    private lateinit var routeCaption: TextView
+    private lateinit var profileHeader: View
+    private lateinit var profileBadge: ProfileBadge
+    private lateinit var profileName: TextView
+    private lateinit var profileMeta: TextView
     private lateinit var hopOpenVpn: HopView
     private lateinit var hopVless: HopView
     private lateinit var otpBox: View
@@ -62,6 +66,9 @@ class MainActivity : Activity() {
     private lateinit var fpBox: View
     private lateinit var fpText: TextView
 
+    // The profile in use, read in onStart and after switching.
+    private lateinit var active: Profile
+    private var activeName = ""
     private var profile: ProfileInfo? = null
     private var vless: VlessConfig? = null
     private var username = ""
@@ -89,7 +96,10 @@ class MainActivity : Activity() {
         errorBox = findViewById(R.id.error_box)
         errorText = findViewById(R.id.error_text)
         errorRaw = findViewById(R.id.error_raw)
-        routeCaption = findViewById(R.id.route_caption)
+        profileHeader = findViewById(R.id.profile_header)
+        profileBadge = findViewById(R.id.profile_badge)
+        profileName = findViewById(R.id.profile_name)
+        profileMeta = findViewById(R.id.profile_meta)
         hopOpenVpn = findViewById(R.id.hop_openvpn)
         hopVless = findViewById(R.id.hop_vless)
         otpBox = findViewById(R.id.otp_box)
@@ -110,13 +120,14 @@ class MainActivity : Activity() {
 
         toggle.setOnClickListener { onToggle() }
         checkIp.setOnClickListener { ipVia?.let(IpCheck::start) }
-        hopOpenVpn.setOnClickListener { startActivity(Intent(this, OpenVpnActivity::class.java)) }
-        hopVless.setOnClickListener { startActivity(Intent(this, VlessActivity::class.java)) }
+        profileHeader.setOnClickListener { ProfilePicker(this, ::onProfilePicked).show() }
+        hopOpenVpn.setOnClickListener { openSetup(OpenVpnActivity::class.java) }
+        hopVless.setOnClickListener { openSetup(VlessActivity::class.java) }
         hopVless.switch.contentDescription = getString(R.string.use_vless)
         hopVless.switch.setOnCheckedChangeListener { _, checked ->
             if (checked != useVless) {
                 useVless = checked
-                settings.useVless = checked
+                active.useVless = checked
                 render()
             }
         }
@@ -143,7 +154,7 @@ class MainActivity : Activity() {
 
         findViewById<View>(R.id.fp_fix).setOnClickListener { useSafeFingerprint() }
         findViewById<View>(R.id.fp_keep).setOnClickListener {
-            settings.keptFingerprint = settings.vless
+            active.keptFingerprint = active.vless
             render()
         }
 
@@ -164,11 +175,8 @@ class MainActivity : Activity() {
 
     override fun onStart() {
         super.onStart()
-        // The setup screens may have changed these.
-        profile = ProfileInfo.parse(settings.profile)
-        vless = VlessConfig.parse(settings.vless)
-        username = settings.username
-        useVless = settings.useVless
+        // The setup screens may have changed the profile, or switched to another.
+        loadProfile()
         VpnState.addObserver(observer)
         showCrash()
         showUpdate()
@@ -177,6 +185,30 @@ class MainActivity : Activity() {
             intent.removeExtra(EXTRA_CONNECT) // not again when coming back to this screen
             connectFromWidget()
         }
+    }
+
+    /** Reads the profile in use. */
+    private fun loadProfile() {
+        active = Profiles.active(this)
+        activeName = active.displayName(this)
+        profile = ProfileInfo.parse(active.ovpn)
+        vless = VlessConfig.parse(active.vless)
+        username = active.username
+        useVless = active.useVless
+    }
+
+    /** From the picker: a code typed for the last profile is no use for this one. */
+    private fun onProfilePicked(id: Long) {
+        if (id == active.id) return
+        switchProfile(this, id)
+        otp.text.clear()
+        showOtpError(false)
+        loadProfile()
+        render()
+    }
+
+    private fun openSetup(screen: Class<out Activity>) {
+        startActivity(Intent(this, screen).putExtra(Profiles.EXTRA_PROFILE, active.id))
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -317,7 +349,10 @@ class MainActivity : Activity() {
                 else R.string.crash_route_openvpn
             ),
         )
-        val secrets = CrashReport.secrets(settings.profile, settings.vless, settings.username)
+        // Every profile's servers, not only the one in use: the log may be from any of them.
+        val secrets = CrashReport.secrets(
+            Profiles.all(this).map { CrashReport.Setup(it.ovpn, it.vless, it.username) }
+        )
         val title = CrashReport.title(crash, app)
         val body = CrashReport.body(crash, device, secrets)
         val intent = if (share) {
@@ -342,8 +377,8 @@ class MainActivity : Activity() {
 
     /** Rewrites the saved link's fp= ([Fingerprint]). A running session keeps the old one until reconnected. */
     private fun useSafeFingerprint() {
-        settings.vless = Fingerprint.fix(settings.vless)
-        vless = VlessConfig.parse(settings.vless)
+        active.vless = Fingerprint.fix(active.vless)
+        vless = VlessConfig.parse(active.vless)
         val running = VpnState.phase != VpnState.Phase.DISCONNECTED
         Toast.makeText(this, if (running) R.string.fp_switched_reconnect else R.string.fp_switched,
             Toast.LENGTH_LONG).show()
@@ -408,16 +443,14 @@ class MainActivity : Activity() {
             errorRaw.text = if (failure == Failure.VLESS) VpnState.vlessError else detail
         }
 
-        // Route
-        routeCaption.setText(
-            if (route == Route.VIA_VLESS) R.string.route_caption_vless else R.string.route_caption_openvpn
-        )
+        // Profile and route
+        bindProfile(profile, route)
         bindOpenVpn(profile, failure)
         bindVless(vless, failure, route)
 
         // Randomized TLS fingerprint in the VLESS link, unless the user kept it
-        val fp = if (route == Route.VIA_VLESS && settings.vless != settings.keptFingerprint) {
-            Fingerprint.risky(settings.vless)
+        val fp = if (route == Route.VIA_VLESS && active.vless != active.keptFingerprint) {
+            Fingerprint.risky(active.vless)
         } else {
             null
         }
@@ -484,6 +517,18 @@ class MainActivity : Activity() {
     /** render() runs for every log line; replacing equal text would drop a selection. */
     private fun setTextKeepingSelection(view: TextView, text: String) {
         if (view.text.toString() != text) view.text = text
+    }
+
+    /** The route card's header: the profile in use, and which way it goes. */
+    private fun bindProfile(profile: ProfileInfo?, route: Route) {
+        profileBadge.bind(activeName, selected = false)
+        profileName.text = activeName
+        profileMeta.setText(when {
+            profile == null -> R.string.profiles_header_not_set_up
+            route == Route.VIA_VLESS -> R.string.profiles_header_vless
+            else -> R.string.profiles_header_openvpn
+        })
+        profileHeader.contentDescription = getString(R.string.profiles_header_description, activeName)
     }
 
     private fun bindOpenVpn(profile: ProfileInfo?, failure: Failure?) {

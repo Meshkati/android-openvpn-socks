@@ -16,5 +16,8 @@
     <color name="err_soft">#4A1A17</color>
     <color name="ripple">#1FE4ECE9</color>
     <color name="shadow">#33000000</color>
+    <color name="inverse_bg">#E4ECE9</color>
+    <color name="inverse_ink">#15201D</color>
+    <color name="inverse_accent">#0E6B5C</color>
     <color name="log_bg">#080C0B</color>
 </resources>

@@ -83,6 +83,19 @@ class CrashReportTest {
     }
 
     @Test
+    fun secretsOfEveryProfile() {
+        val work = CrashReport.Setup("remote vpn.example.com 443\n", "vless://11111111-2222-3333-4444-555555555555@edge.example.net:443", "alex")
+        val home = CrashReport.Setup("remote home.example.org 1194\n", "", "sam.home")
+        assertEquals(
+            listOf(
+                "11111111-2222-3333-4444-555555555555", "edge.example.net", "home.example.org",
+                "vpn.example.com", "sam.home", "alex",
+            ),
+            CrashReport.secrets(listOf(work, home, work)),
+        )
+    }
+
+    @Test
     fun secretsFromAVlessJsonConfig() {
         val json = """{"outbounds":[{"settings":{"vnext":[{"address": "203.0.113.9"}]},
             "streamSettings":{"tlsSettings":{"serverName":"cdn.example.com"}}}]}"""

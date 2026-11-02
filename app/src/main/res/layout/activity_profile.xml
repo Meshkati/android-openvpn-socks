@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One profile (ProfileActivity): name, route, Use this profile, Duplicate, Delete. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    style="@style/Screen"
+    android:focusable="true"
+    android:focusableInTouchMode="true">
+
+    <LinearLayout style="@style/AppBar">
+
+        <ImageButton
+            android:id="@+id/back"
+            style="@style/IconButton"
+            android:contentDescription="@string/back"
+            android:src="@drawable/ic_arrow_back" />
+
+        <TextView
+            android:id="@+id/title"
+            style="@style/AppBarTitle"
+            android:layout_marginStart="4dp" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout style="@style/Content">
+
+            <TextView
+                style="@style/Text.Label"
+                android:layout_marginTop="4dp"
+                android:labelFor="@+id/profile_name"
+                android:text="@string/profiles_name" />
+
+            <EditText
+                android:id="@+id/profile_name"
+                style="@style/Field"
+                android:imeOptions="actionDone"
+                android:importantForAutofill="no"
+                android:inputType="text|textCapSentences"
+                android:maxLength="60"
+                android:maxLines="1"
+                android:saveEnabled="false" />
+
+            <TextView
+                style="@style/Text.Help"
+                android:text="@string/profiles_name_help" />
+
+            <TextView
+                style="@style/Text.Section"
+                android:layout_marginTop="24dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/profiles_route" />
+
+            <io.github.meshkati.ovpnvless.RouteCard
+                android:id="@+id/route"
+                style="@style/Card">
+
+                <io.github.meshkati.ovpnvless.HopView
+                    android:id="@+id/hop_openvpn"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+
+                <io.github.meshkati.ovpnvless.HopView
+                    android:id="@+id/hop_vless"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+            </io.github.meshkati.ovpnvless.RouteCard>
+
+            <Button
+                android:id="@+id/use"
+                style="@style/Button.Fill"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="20dp"
+                android:drawableStart="@drawable/ic_check"
+                android:text="@string/profiles_use" />
+
+            <TextView
+                android:id="@+id/use_help"
+                style="@style/Text.Help"
+                android:gravity="center_horizontal"
+                android:text="@string/profiles_use_needs_openvpn"
+                android:visibility="gone" />
+
+            <!-- Instead of the button, on the profile in use. -->
+            <TextView
+                android:id="@+id/in_use"
+                style="@style/Text"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="20dp"
+                android:drawableStart="@drawable/ic_check"
+                android:drawablePadding="8dp"
+                android:drawableTint="@color/accent"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center"
+                android:minHeight="48dp"
+                android:text="@string/profiles_in_use_long"
+                android:textColor="@color/accent"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/duplicate"
+                    style="@style/Button.Line"
+                    android:drawableStart="@drawable/ic_copy"
+                    android:text="@string/profiles_duplicate" />
+
+                <Button
+                    android:id="@+id/delete"
+                    style="@style/Button.Text"
+                    android:layout_height="44dp"
+                    android:layout_marginStart="8dp"
+                    android:drawableStart="@drawable/ic_trash"
+                    android:drawableTint="@color/err"
+                    android:text="@string/profiles_delete"
+                    android:textColor="@color/err" />
+            </LinearLayout>
+
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:minHeight="32dp" />
+
+            <TextView
+                style="@style/Text"
+                android:layout_gravity="center_horizontal"
+                android:drawableStart="@drawable/ic_lock"
+                android:drawablePadding="6dp"
+                android:drawableTint="@color/muted"
+                android:gravity="center"
+                android:paddingTop="16dp"
+                android:text="@string/saved_locally"
+                android:textColor="@color/muted"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

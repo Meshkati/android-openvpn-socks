@@ -13,10 +13,25 @@
             android:contentDescription="@string/back"
             android:src="@drawable/ic_arrow_back" />
 
-        <TextView
-            style="@style/AppBarTitle"
+        <!-- Title, and under it the profile being edited once there is more than one. -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
             android:layout_marginStart="4dp"
-            android:text="@string/vless_title" />
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/AppBarTitle"
+                android:layout_width="match_parent"
+                android:layout_marginStart="0dp"
+                android:layout_weight="0"
+                android:text="@string/vless_title" />
+
+            <TextView
+                android:id="@+id/app_bar_subtitle"
+                style="@style/AppBarSubtitle" />
+        </LinearLayout>
     </LinearLayout>
 
     <ScrollView

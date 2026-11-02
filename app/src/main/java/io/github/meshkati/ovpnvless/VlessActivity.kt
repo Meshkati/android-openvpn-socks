@@ -13,10 +13,10 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 
-/** VLESS server: the share link or Xray JSON, with a read-only summary. */
+/** VLESS server: a profile's share link or Xray JSON, with a read-only summary. */
 class VlessActivity : Activity() {
 
-    private lateinit var settings: Settings
+    private lateinit var profile: Profile
     private lateinit var vless: EditText
     private lateinit var error: TextView
     private lateinit var summary: View
@@ -30,7 +30,8 @@ class VlessActivity : Activity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_vless)
         edgeToEdge(findViewById(R.id.root))
-        settings = Settings(this)
+        profile = Profiles.of(this) ?: return finish() // deleted meanwhile
+        showProfileName(profile)
 
         vless = findViewById(R.id.vless)
         error = findViewById(R.id.vless_error)
@@ -41,7 +42,7 @@ class VlessActivity : Activity() {
         fpBox = findViewById(R.id.fp_box)
         fpText = findViewById(R.id.fp_text)
 
-        vless.setText(settings.vless)
+        vless.setText(profile.vless)
         vless.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
@@ -54,7 +55,7 @@ class VlessActivity : Activity() {
     }
 
     override fun onPause() {
-        settings.vless = vless.text.toString().trim()
+        if (this::profile.isInitialized) profile.vless = vless.text.toString().trim()
         super.onPause()
     }
 

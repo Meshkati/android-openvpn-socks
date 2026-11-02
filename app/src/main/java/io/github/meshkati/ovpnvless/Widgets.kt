@@ -50,12 +50,15 @@ object Widgets {
     private const val SERVER_NAMES_MIN_WIDTH_DP = 260
 
     private var setup: WidgetState.Setup? = null
-    private var hosts = Hosts(null, null)
+    private var hosts = Hosts(null, null, null)
     private var phase: VpnState.Phase? = null
     private var shown: Pair<WidgetState, String>? = null
 
-    /** The OpenVPN and VLESS server names, shown on the 4×2 widget. */
-    private data class Hosts(val openVpn: String?, val vless: String?)
+    /**
+     * The OpenVPN and VLESS server names, shown on the 4×2 widget, and the
+     * profile's name, shown under its button once there is more than one profile.
+     */
+    private data class Hosts(val openVpn: String?, val vless: String?, val profile: String?)
 
     /** Re-reads the settings and redraws every widget. */
     fun refresh(context: Context) {
@@ -72,19 +75,20 @@ object Widgets {
     }
 
     private fun readSetup(context: Context) {
-        val settings = Settings(context)
-        val profile = ProfileInfo.parse(settings.profile)
-        val vless = VlessConfig.parse(settings.vless)
+        val active = Profiles.active(context)
+        val profile = ProfileInfo.parse(active.ovpn)
+        val vless = VlessConfig.parse(active.vless)
         setup = WidgetState.Setup(
             hasProfile = profile != null,
             needsCode = profile?.challenge != null,
             vless = vless,
-            useVless = settings.useVless,
+            useVless = active.useVless,
             vpnAllowed = VpnService.prepare(context) == null,
         )
         hosts = Hosts(
             openVpn = profile?.let { it.host ?: context.getString(R.string.profile_no_server) },
             vless = vless?.let { vlessName(context, it) },
+            profile = if (Profiles.ids(context).size > 1) active.displayName(context) else null,
         )
         phase = VpnState.phase
     }
@@ -143,6 +147,8 @@ object Widgets {
             Button.ERROR -> R.color.err
             else -> R.color.ink
         })
+        views.setViewVisibility(R.id.widget_profile, if (hosts.profile != null) View.VISIBLE else View.GONE)
+        views.setTextViewText(R.id.widget_profile, hosts.profile.orEmpty())
 
         bindHop(context, views, state.openVpn, R.id.hop_openvpn_dot, R.id.hop_openvpn_icon,
             R.id.hop_openvpn_value, R.id.hop_openvpn_meta, hosts.openVpn, showHosts)

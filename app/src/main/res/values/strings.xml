@@ -20,7 +20,7 @@
     <string name="state_failed">Couldn\'t connect</string>
 
     <!-- Home: hints under the title -->
-    <string name="hint_not_set_up">Add an OpenVPN profile to connect. VLESS is optional.</string>
+    <string name="hint_not_set_up">Add an OpenVPN config to connect. VLESS is optional.</string>
     <string name="hint_connect">Tap to connect</string>
     <string name="hint_disconnect">Tap to disconnect</string>
     <string name="hint_retry">Tap to try again</string>
@@ -35,12 +35,10 @@
     <string name="step_reconnecting">Reconnecting</string>
 
     <!-- Home: route card -->
-    <string name="route_caption_vless">Your route · apps → OpenVPN → VLESS → internet</string>
-    <string name="route_caption_openvpn">Your route · apps → OpenVPN → internet</string>
     <string name="hop_openvpn">OpenVPN</string>
     <string name="hop_vless">VLESS</string>
     <string name="hop_step">Step %1$d</string>
-    <string name="add_openvpn">Add OpenVPN profile</string>
+    <string name="add_openvpn">Add OpenVPN config</string>
     <string name="add_openvpn_meta">Import a .ovpn file</string>
     <string name="add_vless">Add VLESS server</string>
     <string name="add_vless_label">Optional</string>
@@ -59,7 +57,7 @@
     <string name="hop_sign_in_failed">Sign-in failed</string>
     <string name="hop_unreachable">Not reachable</string>
     <string name="hop_certificate">Certificate doesn\'t match</string>
-    <string name="hop_profile_problem">Profile problem</string>
+    <string name="hop_profile_problem">Config problem</string>
     <string name="hop_sign_in_needed">Sign-in needed</string>
     <string name="hop_code_needed">Code needed</string>
     <string name="hop_description">%1$s: %2$s, %3$s</string>
@@ -85,22 +83,22 @@
 
     <!-- Home: authenticator code -->
     <string name="otp_label">Authenticator code</string>
-    <string name="otp_help">Your profile asks for a new code each time you connect.</string>
+    <string name="otp_help">This profile asks for a new code each time you connect.</string>
     <string name="otp_missing">Enter the code first.</string>
 
     <!-- Home: notices -->
     <string name="connected_info_vless">All apps use this route. IPv6 is off while connected.</string>
     <string name="connected_info_openvpn">Apps use the routes the OpenVPN server sends. IPv6 is off unless the server sets it up.</string>
-    <string name="failure_profile">The OpenVPN profile can\'t be used. Open it to check it, or import it again.</string>
+    <string name="failure_profile">The OpenVPN config can\'t be used. Open it to check it, or import it again.</string>
     <string name="failure_code_needed">Enter the authenticator code, then connect.</string>
-    <string name="failure_credentials">OpenVPN needs a username and password. Add them to the OpenVPN profile.</string>
+    <string name="failure_credentials">OpenVPN needs a username and password. Add them next to the OpenVPN config.</string>
     <string name="failure_sign_in">OpenVPN rejected the sign-in. Check the username and password.</string>
     <string name="failure_sign_in_code">OpenVPN rejected the sign-in. Check the username and password, and enter a fresh authenticator code.</string>
     <string name="failure_unreachable">Couldn\'t reach the OpenVPN server. Check your internet connection.</string>
-    <string name="failure_certificate">The OpenVPN server\'s certificate doesn\'t match the profile.</string>
+    <string name="failure_certificate">The OpenVPN server\'s certificate doesn\'t match the config.</string>
     <string name="failure_vless">OpenVPN connected, but VLESS couldn\'t start. Check the VLESS link.</string>
     <string name="failure_other">The connection stopped.</string>
-    <string name="profile_needed">Add an OpenVPN profile first.</string>
+    <string name="profile_needed">Add an OpenVPN config first.</string>
 
     <!-- Home: public IP check -->
     <string name="ip_check_caption">Public IP · as ifconfig.me sees it</string>
@@ -160,11 +158,11 @@
     <string name="crash_route_vless">OpenVPN → VLESS</string>
     <string name="crash_route_openvpn">OpenVPN only</string>
 
-    <!-- OpenVPN profile screen -->
-    <string name="openvpn_title">OpenVPN profile</string>
-    <string name="profile_none">No profile yet</string>
+    <!-- OpenVPN config screen (the .ovpn of a profile) -->
+    <string name="openvpn_title">OpenVPN config</string>
+    <string name="profile_none">No config yet</string>
     <string name="profile_none_meta">Import a .ovpn file, or paste its text.</string>
-    <string name="profile_no_server">Profile loaded</string>
+    <string name="profile_no_server">Config loaded</string>
     <string name="profile_meta">%1$s %2$d</string>
     <string name="profile_asks_code">asks for authenticator code</string>
     <string name="import_file">Import file</string>
@@ -175,14 +173,14 @@
     <string name="password">Password</string>
     <string name="show_password">Show password</string>
     <string name="hide_password">Hide password</string>
-    <string name="sign_in_help">Leave both empty if the profile uses only a certificate.</string>
+    <string name="sign_in_help">Leave both empty if the config uses only a certificate.</string>
     <string name="saved_locally">Saved on this phone only</string>
 
-    <!-- Profile text screen -->
-    <string name="profile_text_title">Profile text</string>
+    <!-- Config text screen -->
+    <string name="profile_text_title">Config text</string>
     <string name="done">Done</string>
     <string name="profile_text_hint">client\ndev tun\nremote vpn.example.com 1194\n…</string>
-    <string name="profile_text_help">Paste a full profile. Inline &lt;ca&gt;, &lt;cert&gt;, &lt;key&gt;, &lt;tls-auth&gt;, &lt;tls-crypt&gt; and &lt;tls-crypt-v2&gt; work.</string>
+    <string name="profile_text_help">Paste a full config. Inline &lt;ca&gt;, &lt;cert&gt;, &lt;key&gt;, &lt;tls-auth&gt;, &lt;tls-crypt&gt; and &lt;tls-crypt-v2&gt; work.</string>
 
     <!-- VLESS screen -->
     <string name="vless_title">VLESS server</string>
@@ -224,4 +222,38 @@
 
     <!-- Notification -->
     <string name="notification_route">%1$s → %2$s</string>
+    <!-- "Connected · Work": the state, then the profile, once there is more than one. -->
+    <string name="notification_title">%1$s · %2$s</string>
+
+    <!-- Profiles: a whole route saved under a name (Profiles.kt) -->
+    <string name="profiles_title">Profiles</string>
+    <string name="profiles_unnamed">My profile</string>
+    <string name="profiles_header_vless">Profile · OpenVPN → VLESS</string>
+    <string name="profiles_header_openvpn">Profile · OpenVPN only</string>
+    <string name="profiles_header_not_set_up">Profile · not set up</string>
+    <string name="profiles_header_description">Profile in use: %1$s. Switch profiles</string>
+    <string name="profiles_route_openvpn_only">%1$s · OpenVPN only</string>
+    <string name="profiles_route_vless_off">%1$s · VLESS off</string>
+    <string name="profiles_route_not_set_up">Not set up</string>
+    <string name="profiles_note_connected">Connected with %1$s. Tapping another profile reconnects with it.</string>
+    <string name="profiles_note_connecting">Connecting with %1$s. Tapping another profile connects with it instead.</string>
+    <string name="profiles_new">New profile</string>
+    <string name="profiles_manage">Manage profiles</string>
+    <string name="profiles_in_use">In use</string>
+    <string name="profiles_in_use_long">This profile is in use</string>
+    <string name="profiles_options">Options for %1$s</string>
+    <string name="profiles_rename">Rename</string>
+    <string name="profiles_save">Save</string>
+    <string name="profiles_duplicate">Duplicate</string>
+    <string name="profiles_move_up">Move up</string>
+    <string name="profiles_move_down">Move down</string>
+    <string name="profiles_delete">Delete</string>
+    <string name="profiles_deleted">%1$s deleted</string>
+    <string name="profiles_undo">Undo</string>
+    <string name="profiles_name">Name</string>
+    <string name="profiles_name_hint">e.g. Work, Home, Travel</string>
+    <string name="profiles_name_help">Optional. Without a name, the profile is named after its OpenVPN server.</string>
+    <string name="profiles_route">Route</string>
+    <string name="profiles_use">Use this profile</string>
+    <string name="profiles_use_needs_openvpn">Add an OpenVPN config first.</string>
 </resources>
