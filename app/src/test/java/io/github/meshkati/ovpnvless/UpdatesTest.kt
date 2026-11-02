@@ -82,4 +82,27 @@ class UpdatesTest {
     fun clockTurnedBackDoesNotBlockChecks() {
         assertTrue(Updates.isDue(now = 0, next = 25 * hour))
     }
+
+    @Test
+    fun manualCheckFindsANewerReleaseEvenIfDismissed() {
+        assertEquals(Updates.Found.Newer(Version(0, 3, 0)), Updates.found("0.2.2", "v0.3.0"))
+    }
+
+    @Test
+    fun manualCheckOnTheLatestOrNewerIsUpToDate() {
+        assertEquals(Updates.Found.UpToDate, Updates.found("0.3.0", "v0.3.0"))
+        assertEquals(Updates.Found.UpToDate, Updates.found("0.4.0", "v0.3.0"))
+    }
+
+    @Test
+    fun manualCheckOnADebugBuildNamesTheLatestRelease() {
+        assertEquals(Updates.Found.NotARelease(Version(0, 3, 0)), Updates.found("0.1-debug", "v0.3.0"))
+    }
+
+    @Test
+    fun manualCheckWithNoAnswerOrAnOddTagFails() {
+        assertEquals(Updates.Found.Failed, Updates.found("0.2.0", null))
+        assertEquals(Updates.Found.Failed, Updates.found("0.2.0", "nightly"))
+        assertEquals(Updates.Found.Failed, Updates.found("0.1-debug", null))
+    }
 }

@@ -404,6 +404,12 @@ shows a notice: **Download** opens the release page in the browser, **Later** hi
 the notice until a newer release comes out. Open the downloaded APK to install it over
 the old one; the settings stay.
 
+To check now, tap **Check for updates** under the version on the About screen. It
+reports whether a newer release is out (even one you tapped **Later** on, and then the
+button opens its release page), that you have the latest version, or that GitHub could
+not be reached. A check that works there counts as the day's check, so the home screen
+shows its notice too.
+
 * The app only reads `api.github.com/repos/Meshkati/android-openvpn-socks/releases/latest`
   over HTTPS. The request carries no account, device or settings, only a
   `User-Agent: ovpnvless/<version> (Android)` header, which GitHub requires. GitHub sees
@@ -415,8 +421,9 @@ the old one; the settings stay.
   only if it is signed with the same key as the installed app, so an APK from
   somewhere else cannot replace it. To check a download by hand, compare its SHA-256
   with the `SHA256SUMS` file in the release.
-* Only release builds (a `versionName` from a tag, like `0.2.0`) check. Debug and local
-  builds never do.
+* Only release builds (a `versionName` from a tag, like `0.2.0`) check on their own.
+  Debug and local builds never do; **Check for updates** there only names the latest
+  release.
 
 ### Crash reports
 

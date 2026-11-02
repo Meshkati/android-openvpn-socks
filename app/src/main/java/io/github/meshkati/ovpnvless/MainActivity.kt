@@ -297,7 +297,7 @@ class MainActivity : Activity() {
         // rotating it does not start a second request.
         settings.nextUpdateCheck = System.currentTimeMillis() + Updates.INTERVAL_FAILED
         Thread({
-            val tag = fetchLatestRelease("ovpnvless/$installed (Android)") ?: return@Thread
+            val tag = fetchLatestRelease(Updates.userAgent(installed)) ?: return@Thread
             runOnUiThread {
                 settings.latestRelease = tag
                 settings.nextUpdateCheck = System.currentTimeMillis() + Updates.INTERVAL_OK

@@ -36,6 +36,9 @@ object Updates {
     /** Latest release, not counting drafts and pre-releases. */
     const val LATEST_URL = "https://api.github.com/repos/$REPO/releases/latest"
 
+    /** Sent with each check, as GitHub requires a User-Agent ([fetchLatestRelease]). */
+    fun userAgent(installed: String) = "ovpnvless/$installed (Android)"
+
     /** After a check that worked, the next one waits a day. */
     const val INTERVAL_OK = 24L * 60 * 60 * 1000
 
@@ -61,6 +64,31 @@ object Updates {
         val newest = Version.parse(latest)?.takeIf { it > current } ?: return null
         val skipped = Version.parse(dismissed)
         return if (skipped != null && newest <= skipped) null else newest
+    }
+
+    /** What a check the user asked for on the About screen found. */
+    sealed class Found {
+        /** No answer from GitHub, or a tag that is not vMAJOR.MINOR.PATCH. */
+        object Failed : Found()
+
+        /** [installed] is the latest release, or newer. */
+        object UpToDate : Found()
+
+        /** A local or debug build, which does not update; [latest] is the newest release. */
+        data class NotARelease(val latest: Version) : Found()
+
+        data class Newer(val version: Version) : Found()
+    }
+
+    /**
+     * The answer to the user's own check: unlike [offer], it shows a newer
+     * release even if the user tapped "Later" on it, since they asked.
+     * [latest] is the tag GitHub gave, null if the request failed.
+     */
+    fun found(installed: String, latest: String?): Found {
+        val newest = latest?.let(Version::parse) ?: return Found.Failed
+        val current = Version.parse(installed) ?: return Found.NotARelease(newest)
+        return if (newest > current) Found.Newer(newest) else Found.UpToDate
     }
 
     /**
