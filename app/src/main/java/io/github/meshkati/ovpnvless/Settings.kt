@@ -41,4 +41,9 @@ class Settings(context: Context) {
     var nextUpdateCheck: Long
         get() = prefs.getLong("next_update_check", 0)
         set(v) = prefs.edit().putLong("next_update_check", v).apply()
+
+    /** Time of the newest process exit already looked at for a crash report ([Crashes]). */
+    var lastExitSeen: Long
+        get() = prefs.getLong("last_exit_seen", 0)
+        set(v) = prefs.edit().putLong("last_exit_seen", v).apply()
 }

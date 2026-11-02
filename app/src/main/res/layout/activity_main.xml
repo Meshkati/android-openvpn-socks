@@ -219,6 +219,65 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/crash_box"
+                style="@style/Notice.Error"
+                android:layout_marginTop="16dp"
+                android:visibility="gone">
+
+                <ImageView
+                    style="@style/NoticeIcon"
+                    android:src="@drawable/ic_alert"
+                    android:tint="@color/err" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Text"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="@string/crash_title"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/crash_text"
+                        style="@style/Text"
+                        android:layout_marginTop="4dp"
+                        android:textColor="@color/muted"
+                        android:textSize="13sp" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="-12dp"
+                        android:layout_marginTop="2dp"
+                        android:layout_marginBottom="-8dp"
+                        android:orientation="horizontal">
+
+                        <Button
+                            android:id="@+id/crash_report"
+                            style="@style/Button.Text"
+                            android:layout_height="40dp"
+                            android:text="@string/crash_report" />
+
+                        <Button
+                            android:id="@+id/crash_share"
+                            style="@style/Button.Text"
+                            android:layout_height="40dp"
+                            android:text="@string/crash_share" />
+
+                        <Button
+                            android:id="@+id/crash_dismiss"
+                            style="@style/Button.Text"
+                            android:layout_height="40dp"
+                            android:text="@string/crash_dismiss" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
                 android:id="@+id/update_box"
                 style="@style/Notice.Info"
                 android:layout_marginTop="16dp"
