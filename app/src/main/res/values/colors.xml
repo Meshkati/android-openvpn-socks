@@ -18,6 +18,10 @@
     <color name="ripple">#1F15201D</color>
     <color name="shadow">#14000000</color>
     <color name="nav_scrim">#99000000</color>
+    <!-- The Undo bar: dark on light, light on dark. -->
+    <color name="inverse_bg">#2A3330</color>
+    <color name="inverse_ink">#E4ECE9</color>
+    <color name="inverse_accent">#5FD3B8</color>
 
     <!-- The log panel is dark in both themes. -->
     <color name="log_bg">#0D1210</color>

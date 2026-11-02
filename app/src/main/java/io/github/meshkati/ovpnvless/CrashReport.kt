@@ -85,6 +85,13 @@ object CrashReport {
         return out.filter { it.length >= 4 }.distinct().sortedByDescending { it.length }
     }
 
+    /** What a profile holds that [secrets] looks at. */
+    data class Setup(val profile: String, val vless: String, val username: String)
+
+    /** [secrets] of every saved profile together, longest first. */
+    fun secrets(setups: List<Setup>): List<String> =
+        setups.flatMap { secrets(it.profile, it.vless, it.username) }.distinct().sortedByDescending { it.length }
+
     private val UUID = Regex("""\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b""")
     private val IPV4 = Regex("""(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])""")
 

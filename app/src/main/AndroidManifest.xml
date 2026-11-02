@@ -33,6 +33,13 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
         <activity
+            android:name=".ProfilesActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ProfileActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
             android:name=".VlessActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />

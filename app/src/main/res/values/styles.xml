@@ -30,6 +30,16 @@
         <item name="android:accessibilityHeading">true</item>
     </style>
 
+    <style name="AppBarSubtitle">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/muted</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:visibility">gone</item>
+    </style>
+
     <style name="IconButton">
         <item name="android:layout_width">48dp</item>
         <item name="android:layout_height">48dp</item>
@@ -193,6 +203,12 @@
         <item name="android:stateListAnimator">@null</item>
     </style>
 
+    <style name="Button.Fill">
+        <item name="android:background">@drawable/bg_btn_fill</item>
+        <item name="android:textColor">@color/on_accent</item>
+        <item name="android:drawableTint">@color/on_accent</item>
+    </style>
+
     <style name="Button.Tone">
         <item name="android:background">@drawable/bg_btn_tone</item>
     </style>
@@ -216,6 +232,24 @@
         <item name="android:background">@drawable/bg_chip</item>
         <item name="android:textColor">@color/chip_text</item>
         <item name="android:textSize">13sp</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+    </style>
+
+    <!-- Profile picker (sheet_profiles) -->
+    <style name="SheetAction">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingStart">24dp</item>
+        <item name="android:paddingEnd">24dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">@color/accent</item>
+        <item name="android:drawablePadding">16dp</item>
+        <item name="android:drawableTint">@color/accent</item>
+        <item name="android:background">?android:attr/selectableItemBackground</item>
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
     </style>

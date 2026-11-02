@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Profiles (ProfilesActivity): the list, New profile, and an Undo bar after a delete. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <LinearLayout style="@style/AppBar">
+
+            <ImageButton
+                android:id="@+id/back"
+                style="@style/IconButton"
+                android:contentDescription="@string/back"
+                android:src="@drawable/ic_arrow_back" />
+
+            <TextView
+                style="@style/AppBarTitle"
+                android:layout_marginStart="4dp"
+                android:text="@string/profiles_title" />
+        </LinearLayout>
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:fillViewport="true">
+
+            <LinearLayout style="@style/Content">
+
+                <LinearLayout
+                    android:id="@+id/profile_list"
+                    style="@style/Card"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp" />
+
+                <Button
+                    android:id="@+id/new_profile"
+                    style="@style/Button.Tone"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="16dp"
+                    android:drawableStart="@drawable/ic_plus"
+                    android:text="@string/profiles_new" />
+
+                <Space
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:minHeight="32dp" />
+
+                <TextView
+                    style="@style/Text"
+                    android:layout_gravity="center_horizontal"
+                    android:drawableStart="@drawable/ic_lock"
+                    android:drawablePadding="6dp"
+                    android:drawableTint="@color/muted"
+                    android:gravity="center"
+                    android:paddingTop="16dp"
+                    android:text="@string/saved_locally"
+                    android:textColor="@color/muted"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </ScrollView>
+    </LinearLayout>
+
+    <!-- After a delete: "Travel NL deleted · Undo", for a few seconds. -->
+    <LinearLayout
+        android:id="@+id/undo_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_margin="12dp"
+        android:background="@drawable/bg_snackbar"
+        android:gravity="center_vertical"
+        android:minHeight="52dp"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="4dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/undo_text"
+            style="@style/Text"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:accessibilityLiveRegion="polite"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textColor="@color/inverse_ink"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/undo"
+            style="@style/Button.Text"
+            android:text="@string/profiles_undo"
+            android:textColor="@color/inverse_accent" />
+    </LinearLayout>
+</FrameLayout>

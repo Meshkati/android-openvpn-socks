@@ -10,6 +10,9 @@ VLESS is optional. With no VLESS server saved, or with **Use VLESS** switched of
 on the home screen, the app is a plain OpenVPN client: OpenVPN 3 gets the device
 TUN with the addresses, routes and DNS its server pushes.
 
+Several setups can be saved as **profiles** (say Work, Home lab, Travel), each with
+its own OpenVPN config, sign-in and VLESS server, and switched from the home screen.
+
 ```
 apps ─► VpnService TUN ─► Xray "tun" inbound ─► VLESS outbound
                                                    │  (Xray's system dialer replaced)
@@ -26,12 +29,15 @@ apps ─► VpnService TUN ─► Xray "tun" inbound ─► VLESS outbound
 |:---:|:---:|:---:|:---:|
 | <img src="design/screenshots/home-ready.png" width="180" alt="Home, ready to connect, with the authenticator code field"> | <img src="design/screenshots/home-connecting.png" width="180" alt="Home, connecting to OpenVPN"> | <img src="design/screenshots/home-connected.png" width="180" alt="Home, connected through OpenVPN and VLESS"> | <img src="design/screenshots/home-failed.png" width="180" alt="Home, OpenVPN rejected the sign-in"> |
 
-| OpenVPN profile | VLESS server | Log | Dark theme |
+| OpenVPN config | VLESS server | Log | Dark theme |
 |:---:|:---:|:---:|:---:|
-| <img src="design/screenshots/openvpn-profile.png" width="180" alt="OpenVPN profile screen"> | <img src="design/screenshots/vless-server.png" width="180" alt="VLESS server screen with the link summary"> | <img src="design/screenshots/log.png" width="180" alt="Log screen"> | <img src="design/screenshots/home-connected-dark.png" width="180" alt="Home, connected, dark theme"> |
+| <img src="design/screenshots/openvpn-profile.png" width="180" alt="OpenVPN config screen"> | <img src="design/screenshots/vless-server.png" width="180" alt="VLESS server screen with the link summary"> | <img src="design/screenshots/log.png" width="180" alt="Log screen"> | <img src="design/screenshots/home-connected-dark.png" width="180" alt="Home, connected, dark theme"> |
 
 Rendered with Robolectric on a JVM, not captured on a phone. They predate the
-**Use VLESS** switch, which now sits at the end of the VLESS row.
+**Use VLESS** switch, which now sits at the end of the VLESS row, and profiles: the
+route card now starts with the profile in use, and the OpenVPN screen is called
+**OpenVPN config**. [design/profiles-sketches.html](design/profiles-sketches.html) shows
+the profile screens.
 
 ## Why it is built this way
 
@@ -156,11 +162,12 @@ app/                      Android app (Kotlin, no AndroidX)
     ovpn3_jni.cpp         JNI bridge to io.github.meshkati.ovpnvless.OpenVpn3, and the
                           getaddrinfo wrapper for OpenVPN-only sessions
   src/main/java/.../      ChainVpnService, OpenVpn3, UnderlyingNetworks, VpnState,
-                          IpCheck, Settings, and the UI:
-                          MainActivity (home), OpenVpnActivity, ProfileTextActivity,
+                          IpCheck, Settings, Profiles, and the UI:
+                          MainActivity (home), ProfilePicker, ProfilesActivity,
+                          ProfileActivity, OpenVpnActivity, ProfileTextActivity,
                           VlessActivity, LogActivity, DonateActivity, and the
                           home-screen widgets (Widgets, WidgetState)
-  src/test/               JVM unit tests for the profile/link summaries and status text
+  src/test/               JVM unit tests for the config/link summaries, status text and profiles
 design/                   UI sketches and screenshots
 engine/                   Go: Xray-core + gVisor stack, gomobile API, vless:// parser
 scripts/build-engine.sh   gomobile bind → app/libs/engine.aar
@@ -261,13 +268,14 @@ settings. Android runs one VPN at a time, so connecting one disconnects the othe
 ## Using the app
 
 See [Screenshots](#screenshots) for every screen. The home screen has one round button that connects and disconnects, the status in
-plain words, and your route: OpenVPN, then VLESS. Tap a step of the route to set it up.
+plain words, and your route: the profile in use, then OpenVPN, then VLESS. Tap a step of
+the route to set it up for that profile; tap the profile to switch (see [Profiles](#profiles)).
 
-1. **OpenVPN profile**: tap **Import file**, or **Edit text** to paste the `.ovpn`.
+1. **OpenVPN config**: tap **Import file**, or **Edit text** to paste the `.ovpn`.
    Inline `<ca>`, `<cert>`, `<key>`, `<tls-auth>`, `<tls-crypt>` and `<tls-crypt-v2>`
-   work. A username/password-only profile (no client cert) also works. Enter the
-   username and password if the profile has `auth-user-pass`.
-2. **Authenticator code**: if the profile has `static-challenge` (e.g. OpenVPN Access
+   work. A username/password-only config (no client cert) also works. Enter the
+   username and password if the config has `auth-user-pass`.
+2. **Authenticator code**: if the config has `static-challenge` (e.g. OpenVPN Access
    Server with an authenticator app), the home screen shows a code field. Enter the
    current code before each connect. It is never stored.
 3. **VLESS server** (optional): paste a share link, for example
@@ -309,6 +317,32 @@ plain words, and your route: OpenVPN, then VLESS. Tap a step of the route to set
 
 The UI follows the system light/dark setting.
 
+### Profiles
+
+A profile is a whole route saved under a name: the OpenVPN config with its username and
+password, and optionally a VLESS server with its **Use VLESS** switch. The first start
+after updating turns the setup you had into the first profile, named after its OpenVPN
+server, so nothing has to be entered again.
+
+* **Switch**: tap the profile at the top of the home screen's route card. A sheet lists
+  every profile with its route (`vpn.example.com → edge.example.net`, or `· OpenVPN only`).
+  Tap one to use it. While connected, picking another one disconnects and connects with
+  it; if it asks for an authenticator code, it only disconnects and the home screen asks
+  for the code.
+* **New profile** (in the sheet, or on the Profiles screen) starts empty. The name is
+  optional: without one the profile is named after its OpenVPN server. A new profile left
+  empty is not kept.
+* **Manage profiles** opens the list. Tap a profile to edit its name and route without
+  switching to it, or to **Use this profile**. Its menu has **Rename**, **Duplicate**
+  (a copy named "Travel NL 2", the quickest way to try another VLESS server with the same
+  OpenVPN), **Move up**/**Move down** (the sheet uses the same order) and **Delete**,
+  which can be undone for a few seconds. The only profile can't be deleted, nor the one in
+  use while connected.
+* With more than one profile, the notification, the 4×2 widget and the OpenVPN and VLESS
+  screens also name the profile. The widgets always connect the profile in use.
+* Crash reports hide the servers, UUIDs and usernames of every profile, not just the one
+  in use.
+
 ### Widgets
 
 Two home-screen widgets connect and disconnect without opening the app. Long-press the
@@ -323,11 +357,12 @@ home screen, tap **Widgets**, and pick **VPN on/off** or **VPN route**.
   on the home screen: server, then status (`Connected · 10.8.0.6`, `Waiting for OpenVPN`,
   `Couldn't start`, …). The line between the steps turns solid green once both are
   connected. After a **Check IP** on the home screen, the VLESS step shows **IP ✓**
-  (or **IP ✗**). Tapping anywhere but the button opens the app.
+  (or **IP ✗**). With more than one profile, the profile in use is named under the
+  button. Tapping anywhere but the button opens the app.
 
 The button opens the app instead of connecting when the app has to ask something
-first: the VPN permission, the authenticator code (the lock icon), or a profile when
-none is set up. The widgets are redrawn when the connection changes, so they don't
+first: the VPN permission, the authenticator code (the lock icon), or an OpenVPN config
+when none is set up. The widgets are redrawn when the connection changes, so they don't
 wake the phone on a timer.
 
 ### Donate
@@ -409,8 +444,9 @@ learn the user's real IP and that they use this app.
   against a local HTTPS server (answer, log, bad answers, untrusted certificate).
   It also checks that a Go panic lands in the crash file. The engine builds on Linux
   only (gVisor).
-* `./gradlew :app:testDebugUnitTest` runs the app's JVM unit tests: the profile and
-  `vless://` summaries the UI shows, the mapping from OpenVPN events and errors
+* `./gradlew :app:testDebugUnitTest` runs the app's JVM unit tests: the OpenVPN config and
+  `vless://` summaries the UI shows, the profile list (order, delete and undo, which profile
+  is in use) and profile names, the mapping from OpenVPN events and errors
   to status text, the choice between the two routes, how the IP check goes in each state and
   what counts as an IP in its answer, what the widgets show in each state, the version comparison and
   timing of the update check, the donation amounts, and the crash report (reading a tombstone, hiding
@@ -483,7 +519,7 @@ Limitations of this minimal version:
   Static challenge (`static-challenge`, e.g. authenticator codes) works, but the code
   must be typed for each Connect, so always-on VPN cannot start such a profile.
 * With VLESS, IPv6 is blocked while connected. Everything goes over IPv4 through VLESS.
-* Credentials are stored unencrypted in app-private SharedPreferences.
+* Credentials are stored unencrypted in app-private SharedPreferences, one file per profile.
 * With VLESS, apps' DNS is fixed to `1.1.1.1` (carried over VLESS). There are no routing
   rules or per-app selection; everything except this app goes through the chain.
 * With VLESS, OpenVPN `route`/`redirect-gateway` options are ignored. Only Xray uses the
@@ -526,6 +562,11 @@ VLESS. Check these before relying on the app:
   (only `route`s): apps outside the routes should use Wi-Fi directly, the pushed DNS
   should be used, IPv6 should be blocked when the server sets up none, and a
   reconnect (Wi-Fi ↔ mobile, `ping-restart`) should keep the TUN.
+- [ ] **Profiles on a phone.** Update over an older version and check the setup comes
+  back as the first profile, password included. Switch profiles while connected: the
+  session should restart with the new one, and nothing should leave outside the VPN
+  between the two sessions (with and without "Block connections without VPN"). Check the
+  picker sheet over the navigation bar on Android 15+ with gesture and 3-button navigation.
 - [ ] **Exit IP consistency.** Check several IP services (TCP and HTTP/3), plus
   whatismyip.com showing "IPv6: not detected", after OS updates and with other VLESS
   servers, not only the Worker.

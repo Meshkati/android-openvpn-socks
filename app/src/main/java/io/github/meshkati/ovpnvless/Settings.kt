@@ -2,38 +2,71 @@ package io.github.meshkati.ovpnvless
 
 import android.content.Context
 
-/** What the user entered, kept in app-private SharedPreferences. */
+/**
+ * App-wide state, kept in app-private SharedPreferences. What the user sets up
+ * for a connection is in each [Profile]; this keeps their order and the one
+ * in use.
+ */
 class Settings(context: Context) {
     private val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
-    var profile: String
-        get() = prefs.getString("profile", "")!!
-        set(v) = prefs.edit().putString("profile", v).apply()
+    private companion object {
+        /** The one setup's keys before profiles. */
+        val LEGACY_KEYS = listOf("profile", "username", "password", "vless", "use_vless", "kept_fingerprint")
+    }
 
-    var username: String
-        get() = prefs.getString("username", "")!!
-        set(v) = prefs.edit().putString("username", v).apply()
+    /** The saved profiles' ids in order, e.g. "1,3,2" ([Profiles]). Empty until profiles are set up. */
+    val profileOrder: String
+        get() = prefs.getString("profiles", "")!!
 
-    var password: String
-        get() = prefs.getString("password", "")!!
-        set(v) = prefs.edit().putString("password", v).apply()
+    /** The id of the profile in use ([Profiles]). */
+    val activeProfile: Long
+        get() = prefs.getLong("active_profile", 0)
 
-    var vless: String
-        get() = prefs.getString("vless", "")!!
-        set(v) = prefs.edit().putString("vless", v).apply()
+    /** The id the next new profile gets. Ids are never reused. */
+    var nextProfileId: Long
+        get() = prefs.getLong("next_profile_id", 1)
+        set(v) {
+            prefs.edit().putLong("next_profile_id", v).commit()
+        }
 
-    /** The "Use VLESS" switch. Off means OpenVPN only, even with a VLESS setting saved. */
-    var useVless: Boolean
-        get() = prefs.getBoolean("use_vless", true)
-        set(v) = prefs.edit().putBoolean("use_vless", v).apply()
+    fun setProfiles(order: String, active: Long) {
+        prefs.edit().putString("profiles", order).putLong("active_profile", active).commit()
+    }
 
     /**
-     * The VLESS setting the user chose to keep despite its randomized TLS
-     * fingerprint ([Fingerprint]). The home screen warns again once it changes.
+     * Before profiles, the one setup was kept here. Null when there is none,
+     * as on a new install.
      */
-    var keptFingerprint: String
-        get() = prefs.getString("kept_fingerprint", "")!!
-        set(v) = prefs.edit().putString("kept_fingerprint", v).apply()
+    fun legacySetup(): Legacy? {
+        if (LEGACY_KEYS.none { prefs.contains(it) }) return null
+        return Legacy(
+            ovpn = prefs.getString("profile", "")!!,
+            username = prefs.getString("username", "")!!,
+            password = prefs.getString("password", "")!!,
+            vless = prefs.getString("vless", "")!!,
+            useVless = prefs.getBoolean("use_vless", true),
+            keptFingerprint = prefs.getString("kept_fingerprint", "")!!,
+        )
+    }
+
+    /**
+     * Saves the first profile list and, in the same write, removes the setup
+     * [legacySetup] read, which the first profile now holds.
+     */
+    fun startProfiles(order: String, active: Long, nextId: Long) {
+        val edit = prefs.edit()
+            .putString("profiles", order)
+            .putLong("active_profile", active)
+            .putLong("next_profile_id", nextId)
+        LEGACY_KEYS.forEach { edit.remove(it) }
+        edit.commit()
+    }
+
+    class Legacy(
+        val ovpn: String, val username: String, val password: String,
+        val vless: String, val useVless: Boolean, val keptFingerprint: String,
+    )
 
     /** The latest release tag GitHub reported, e.g. "v0.2.0". */
     var latestRelease: String

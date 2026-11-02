@@ -10,14 +10,14 @@ import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 
-/** OpenVPN profile: import or edit the .ovpn, and the username and password. */
+/** OpenVPN config: import or edit a profile's .ovpn, and the username and password. */
 class OpenVpnActivity : Activity() {
 
     companion object {
         private const val REQUEST_IMPORT = 1
     }
 
-    private lateinit var settings: Settings
+    private lateinit var profile: Profile
     private lateinit var summaryTitle: TextView
     private lateinit var summaryMeta: TextView
     private lateinit var username: EditText
@@ -29,7 +29,8 @@ class OpenVpnActivity : Activity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_openvpn)
         edgeToEdge(findViewById(R.id.root))
-        settings = Settings(this)
+        profile = Profiles.of(this) ?: return finish() // deleted meanwhile
+        showProfileName(profile)
 
         summaryTitle = findViewById(R.id.summary_title)
         summaryMeta = findViewById(R.id.summary_meta)
@@ -37,8 +38,8 @@ class OpenVpnActivity : Activity() {
         password = findViewById(R.id.password)
         togglePassword = findViewById(R.id.toggle_password)
 
-        username.setText(settings.username)
-        password.setText(settings.password)
+        username.setText(profile.username)
+        password.setText(profile.password)
 
         findViewById<View>(R.id.back).setOnClickListener { finish() }
         findViewById<View>(R.id.import_file).setOnClickListener {
@@ -49,7 +50,9 @@ class OpenVpnActivity : Activity() {
             startActivityForResult(pick, REQUEST_IMPORT)
         }
         findViewById<View>(R.id.edit_text).setOnClickListener {
-            startActivity(Intent(this, ProfileTextActivity::class.java))
+            startActivity(
+                Intent(this, ProfileTextActivity::class.java).putExtra(Profiles.EXTRA_PROFILE, profile.id)
+            )
         }
         togglePassword.setOnClickListener { showPassword(!passwordShown) }
     }
@@ -60,8 +63,10 @@ class OpenVpnActivity : Activity() {
     }
 
     override fun onPause() {
-        settings.username = username.text.toString()
-        settings.password = password.text.toString()
+        if (this::profile.isInitialized) {
+            profile.username = username.text.toString()
+            profile.password = password.text.toString()
+        }
         super.onPause()
     }
 
@@ -76,7 +81,7 @@ class OpenVpnActivity : Activity() {
     }
 
     private fun renderSummary() {
-        val info = ProfileInfo.parse(settings.profile)
+        val info = ProfileInfo.parse(profile.ovpn)
         if (info == null) {
             summaryTitle.setText(R.string.profile_none)
             summaryMeta.setText(R.string.profile_none_meta)
@@ -103,7 +108,7 @@ class OpenVpnActivity : Activity() {
             Toast.makeText(this, R.string.import_failed, Toast.LENGTH_LONG).show()
             return
         }
-        settings.profile = text
+        profile.ovpn = text
         renderSummary()
     }
 }
