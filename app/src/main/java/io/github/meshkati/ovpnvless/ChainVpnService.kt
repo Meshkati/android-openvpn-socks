@@ -38,6 +38,11 @@ import kotlin.concurrent.thread
  *
  * A session runs the profile in use when it starts ([Profiles]). Switching
  * profiles while connected restarts it with the new one (ACTION_RECONNECT).
+ *
+ * The notification can pause the VPN (ACTION_PAUSE): the session ends but the
+ * service stays in the foreground, its notification offering to resume
+ * (ACTION_CONNECT). While connected it also runs the home screen's IP check
+ * (ACTION_CHECK_IP) and shows the answer.
  */
 class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
 
@@ -48,12 +53,25 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         /** Ends the running session, then connects again with the profile in use. */
         const val ACTION_RECONNECT = "io.github.meshkati.ovpnvless.RECONNECT"
 
+        /** Ends the session but keeps the notification, which can connect again. */
+        const val ACTION_PAUSE = "io.github.meshkati.ovpnvless.PAUSE"
+
+        /** Runs the home screen's IP check ([IpCheck]) through the tunnel. */
+        const val ACTION_CHECK_IP = "io.github.meshkati.ovpnvless.CHECK_IP"
+
         // One-time code for the profile's static-challenge. Not stored: it is
         // only valid once.
         const val EXTRA_OTP = "otp"
 
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "vpn"
+
+        // Request codes of the notification's PendingIntents.
+        private const val REQUEST_OPEN = 0
+        private const val REQUEST_DISCONNECT = 1
+        private const val REQUEST_PAUSE = 2
+        private const val REQUEST_RESUME = 3
+        private const val REQUEST_CHECK_IP = 4
 
         // Address of the device TUN. Only Xray reads this interface, so any
         // private range unused by the local network works.
@@ -63,10 +81,22 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         private const val APP_DNS = "1.1.1.1"
     }
 
+    @Volatile
     private var session: Thread? = null
 
     // Set by ACTION_RECONNECT: connect again once the session ends.
     private var reconnecting = false
+
+    // Set by ACTION_PAUSE: once the session ends, stay in the foreground with
+    // a notification that can resume.
+    @Volatile
+    private var paused = false
+
+    // Held while posting or removing the notification, so an update can't
+    // bring it back once the session removed it. Not the service's own lock:
+    // that one is held while calling OpenVpn3.stop(), and the session thread
+    // updates the notification.
+    private val notificationLock = Any()
     private val main = Handler(Looper.getMainLooper())
 
     // Only touched on the session thread (onTun runs inside OpenVpn3.run).
@@ -86,14 +116,23 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
     // Tracked during OpenVPN-only sessions; see underlyingNetwork().
     private val underlying by lazy { UnderlyingNetworks(getSystemService(ConnectivityManager::class.java)) }
 
+    // What the notification last showed of the IP check; see onIpCheckChanged().
+    private var shownIp: Pair<IpCheck.State, String>? = null
+    private val ipObserver = { onIpCheckChanged() }
+
+    override fun onCreate() {
+        super.onCreate()
+        VpnState.addObserver(ipObserver)
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_DISCONNECT) {
-            disconnect()
-        } else if (intent?.action == ACTION_RECONNECT) {
-            reconnect()
-        } else {
+        when (intent?.action) {
+            ACTION_DISCONNECT -> disconnect()
+            ACTION_RECONNECT -> reconnect()
+            ACTION_PAUSE -> pause()
+            ACTION_CHECK_IP -> checkIp()
             // ACTION_CONNECT, or the system starting us for always-on VPN.
-            connect(intent?.getStringExtra(EXTRA_OTP).orEmpty())
+            else -> connect(intent?.getStringExtra(EXTRA_OTP).orEmpty())
         }
         return START_NOT_STICKY
     }
@@ -104,6 +143,7 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
     }
 
     override fun onDestroy() {
+        VpnState.removeObserver(ipObserver)
         OpenVpn3.stop()
         super.onDestroy()
     }
@@ -114,6 +154,7 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
             startForegroundNotification()
             return
         }
+        paused = false
 
         val profile = Profiles.active(this)
         val sessionRoute = Route.choose(VlessConfig.parse(profile.vless), profile.useVless)
@@ -145,9 +186,9 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
             VpnState.log(error?.let { "OpenVPN error: $it" } ?: "OpenVPN session ended")
             stopEngine()
             underlying.stop()
-            val again = synchronized(this) {
+            val (again, pausing) = synchronized(this) {
                 session = null
-                reconnecting.also { reconnecting = false }
+                (reconnecting to paused).also { reconnecting = false }
             }
             // A result from the tunnel would read as the IP without the VPN.
             IpCheck.reset()
@@ -156,8 +197,14 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
                 main.post { connect("") }
                 return@thread
             }
+            if (pausing) {
+                // Asked for: not a failure. Stay in the foreground, offering to resume.
+                VpnState.set(VpnState.Phase.DISCONNECTED)
+                updateNotification()
+                return@thread
+            }
             VpnState.set(VpnState.Phase.DISCONNECTED, error ?: "")
-            stopForeground(STOP_FOREGROUND_REMOVE)
+            removeNotification()
             stopSelf()
         }
     }
@@ -175,11 +222,30 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         OpenVpn3.stop() // run() returns, and the session thread connects again
     }
 
+    /** Ends the session, keeping the notification so it can resume (ACTION_CONNECT). */
+    @Synchronized
+    private fun pause() {
+        // Nothing to pause, or already on its way out (a stale notification's button).
+        if (session == null || paused || VpnState.phase == VpnState.Phase.DISCONNECTING) return
+        paused = true
+        reconnecting = false
+        VpnState.set(VpnState.Phase.DISCONNECTING)
+        updateNotification()
+        OpenVpn3.stop() // run() returns, and the session thread keeps the notification
+    }
+
+    /** The home screen's IP check, from the notification: only while connected. */
+    private fun checkIp() {
+        if (VpnState.phase != VpnState.Phase.CONNECTED) return
+        IpCheck.Via.of(Stage.CONNECTED, VpnState.route)?.let(IpCheck::start)
+    }
+
     @Synchronized
     private fun disconnect() {
         reconnecting = false
+        paused = false
         if (session == null) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
+            removeNotification()
             stopSelf()
             return
         }
@@ -196,8 +262,9 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         when (name) {
             "RECONNECTING", "RESOLVE", "WAIT", "CONNECTING", "GET_CONFIG", "ASSIGN_IP" ->
                 if (VpnState.phase != VpnState.Phase.DISCONNECTING) {
-                    if (VpnState.phase == VpnState.Phase.CONNECTED) updateNotification(R.string.state_connecting)
+                    val wasConnected = VpnState.phase == VpnState.Phase.CONNECTED
                     VpnState.set(VpnState.Phase.CONNECTING, name.lowercase())
+                    if (wasConnected) updateNotification()
                 }
             "CONNECTED" -> if (tunnelUp) VpnState.set(VpnState.Phase.CONNECTED, info)
         }
@@ -276,7 +343,7 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         tunnelUp = true
         VpnState.setTunnel(addresses.firstOrNull()?.substringBefore('/').orEmpty())
         VpnState.set(VpnState.Phase.CONNECTED, addresses.joinToString())
-        updateNotification(R.string.state_connected)
+        updateNotification()
     }
 
     private fun stopEngine() {
@@ -302,9 +369,7 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, getString(R.string.notification_channel), NotificationManager.IMPORTANCE_LOW)
         )
-        val notification = buildNotification(
-            if (VpnState.phase == VpnState.Phase.CONNECTED) R.string.state_connected else R.string.state_connecting
-        )
+        val notification = buildNotification()
         if (Build.VERSION.SDK_INT >= 34) {
             startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
@@ -312,30 +377,95 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         }
     }
 
-    /** Replaces the notification's title, e.g. when the tunnel comes up. */
-    private fun updateNotification(title: Int) {
-        getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, buildNotification(title))
+    /** Redraws the notification from [VpnState] and [IpCheck], e.g. when the tunnel comes up. */
+    private fun updateNotification() {
+        synchronized(notificationLock) {
+            // Not after the session ended for good: that would bring back the notification it removed.
+            if (session == null && !paused) return
+            getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, buildNotification())
+        }
     }
 
-    private fun buildNotification(title: Int): Notification {
-        val open = PendingIntent.getActivity(
-            this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE
-        )
-        val stop = PendingIntent.getService(
-            this, 1, Intent(this, ChainVpnService::class.java).setAction(ACTION_DISCONNECT),
-            PendingIntent.FLAG_IMMUTABLE
-        )
-        return Notification.Builder(this, CHANNEL_ID)
+    private fun removeNotification() {
+        synchronized(notificationLock) { stopForeground(STOP_FOREGROUND_REMOVE) }
+    }
+
+    /** [VpnState]'s observer (main thread): shows the IP check's progress and answer. */
+    private fun onIpCheckChanged() {
+        val ip = IpCheck.state to IpCheck.result
+        if (ip == shownIp) return // the observers also run for every log line
+        shownIp = ip
+        updateNotification()
+    }
+
+    private fun buildNotification(): Notification {
+        val phase = VpnState.phase
+        val connected = phase == VpnState.Phase.CONNECTED
+        val title = when {
+            paused && session == null -> R.string.state_paused
+            paused -> R.string.state_pausing
+            connected -> R.string.state_connected
+            else -> R.string.state_connecting
+        }
+        val builder = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_vpn)
             .setContentTitle(
                 if (profileName.isEmpty()) getString(title)
                 else getString(R.string.notification_title, getString(title), profileName)
             )
             .setContentText(route)
-            .setContentIntent(open)
-            .addAction(Notification.Action.Builder(null, getString(R.string.disconnect), stop).build())
+            .setContentIntent(openApp(connect = false))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .build()
+        if (connected) {
+            // The IP check's answer, in the header next to the app's name.
+            when (IpCheck.state) {
+                IpCheck.State.IDLE -> {}
+                IpCheck.State.RUNNING -> builder.setSubText(getString(R.string.notification_ip_checking))
+                IpCheck.State.DONE -> builder.setSubText(getString(R.string.notification_ip, IpCheck.result))
+                IpCheck.State.FAILED -> builder.setSubText(getString(R.string.notification_ip_failed))
+            }
+        }
+
+        when {
+            paused && session == null -> builder.addAction(action(R.string.resume, resumeIntent()))
+            paused -> {}
+            phase == VpnState.Phase.CONNECTING || connected ->
+                builder.addAction(action(R.string.pause, serviceIntent(REQUEST_PAUSE, ACTION_PAUSE)))
+        }
+        if (connected && !paused) {
+            builder.addAction(action(R.string.check_ip, serviceIntent(REQUEST_CHECK_IP, ACTION_CHECK_IP)))
+        }
+        builder.addAction(action(R.string.disconnect, serviceIntent(REQUEST_DISCONNECT, ACTION_DISCONNECT)))
+        return builder.build()
     }
+
+    private fun action(label: Int, intent: PendingIntent) =
+        Notification.Action.Builder(null, getString(label), intent).build()
+
+    private fun serviceIntent(request: Int, action: String): PendingIntent = PendingIntent.getService(
+        this, request, Intent(this, ChainVpnService::class.java).setAction(action), PendingIntent.FLAG_IMMUTABLE
+    )
+
+    /**
+     * Connects again with the profile in use. One that asks for an
+     * authenticator code opens the home screen instead, which asks for it.
+     */
+    private fun resumeIntent(): PendingIntent {
+        val info = ProfileInfo.parse(Profiles.active(this).ovpn)
+        if (info == null || info.challenge != null) return openApp(connect = true)
+        return PendingIntent.getForegroundService(
+            this, REQUEST_RESUME,
+            Intent(this, ChainVpnService::class.java).setAction(ACTION_CONNECT),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun openApp(connect: Boolean): PendingIntent = PendingIntent.getActivity(
+        this, if (connect) REQUEST_RESUME else REQUEST_OPEN,
+        Intent(this, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(MainActivity.EXTRA_CONNECT, connect),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
 }
