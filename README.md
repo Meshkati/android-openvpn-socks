@@ -309,16 +309,51 @@ the old one; the settings stay.
 * Only release builds (a `versionName` from a tag, like `0.2.0`) check. Debug and local
   builds never do.
 
+### Crash reports
+
+The app has no analytics or crash-reporting service and sends nothing on its own. If
+it crashed, the next time the home screen opens it says so, with **Report**, **Share**
+and **Dismiss**:
+
+* **Report** opens a new GitHub issue in the browser with the report filled in. The
+  user reads it and decides whether to submit it. A long report is cut to fit the link.
+* **Share** sends the full report with any app (Telegram, email, copy).
+* **Dismiss** deletes it.
+
+What it records, in app-private files, and only for the installed version:
+
+* **Kotlin/Java crashes**: the stack trace, from an uncaught-exception handler.
+* **Go crashes** (Xray, gVisor): the panic and goroutine stacks, which the Go runtime
+  writes to a file (`engine.SetCrashFile`, using `debug.SetCrashOutput`).
+* **Native crashes** (OpenVPN 3, mbed TLS, or a signal in the engine) and **ANRs**:
+  Android's own record of why the process died (`ApplicationExitInfo`, Android 11+).
+  From Android 12 that includes the tombstone; the app takes only the signal, abort
+  message and the crashing thread's backtrace. The tombstone also holds the app's
+  logcat, registers and memory; those are skipped. For an ANR, the main thread's stack.
+
+The report adds the app version, Android version and ABI, the phone model and which
+route was set (OpenVPN only or with VLESS). Before it is shown, the OpenVPN servers
+(every `remote`), the VLESS server and UUID, server addresses in a VLESS JSON config,
+the username, and any other UUID or IPv4 address are replaced with `[server]`, `[uuid]`
+and `[ip]`. An error message can still name something unexpected, so the user sees the
+text before sending it. The app log is never included.
+
+Why not Sentry or similar: the app is excluded from its own VPN, so a crash upload
+would go over the normal network. The service, and anyone watching the network, would
+learn the user's real IP and that they use this app.
+
 ## Testing
 
 * `cd engine && go test ./...` checks that Xray-core accepts every config the
   `vless://` parser produces, and runs the IP check through a real Xray instance
   against a local HTTPS server (answer, log, bad answers, untrusted certificate).
-  The engine builds on Linux only (gVisor).
+  It also checks that a Go panic lands in the crash file. The engine builds on Linux
+  only (gVisor).
 * `./gradlew :app:testDebugUnitTest` runs the app's JVM unit tests: the profile and
   `vless://` summaries the UI shows, the mapping from OpenVPN events and errors
-  to status text, the choice between the two routes, and the version comparison and
-  timing of the update check.
+  to status text, the choice between the two routes, the version comparison and
+  timing of the update check, and the crash report (reading a tombstone, hiding
+  servers and addresses, cutting the GitHub link to size).
 * `sudo hosttest/run-e2e.sh` (Linux, needs `openvpn dnsmasq openssl python3 go cmake ninja`)
   runs the full chain on a PC. It starts an OpenVPN 2.6 server (user/pass + tls-crypt),
   a DNS server reachable only inside the tunnel, and an Xray **VLESS + REALITY + Vision**

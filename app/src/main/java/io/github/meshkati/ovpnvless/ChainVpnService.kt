@@ -100,6 +100,7 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         IpCheck.reset()
         VpnState.set(VpnState.Phase.CONNECTING, "starting OpenVPN")
         if (sessionRoute == Route.VIA_VLESS) {
+            Crashes.watchEngine(this)
             VpnState.log("${OpenVpn3.coreVersion()}; Xray-core ${Engine.xrayVersion()}")
             Engine.setLogger { line -> VpnState.log("xray: $line") }
         } else {

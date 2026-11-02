@@ -10,6 +10,7 @@ import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
 import android.text.Editable
+import android.text.format.DateUtils
 import android.text.TextWatcher
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -54,6 +55,8 @@ class MainActivity : Activity() {
     private lateinit var ipLog: TextView
     private lateinit var updateBox: View
     private lateinit var updateText: TextView
+    private lateinit var crashBox: View
+    private lateinit var crashText: TextView
 
     private var profile: ProfileInfo? = null
     private var vless: VlessConfig? = null
@@ -90,6 +93,8 @@ class MainActivity : Activity() {
         ipLog = findViewById(R.id.ip_log)
         updateBox = findViewById(R.id.update_box)
         updateText = findViewById(R.id.update_text)
+        crashBox = findViewById(R.id.crash_box)
+        crashText = findViewById(R.id.crash_text)
 
         toggle.setOnClickListener { onToggle() }
         checkIp.setOnClickListener { IpCheck.start() }
@@ -110,6 +115,12 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.update_later).setOnClickListener {
             update?.let { settings.dismissedRelease = "v$it" }
             showUpdate()
+        }
+        findViewById<View>(R.id.crash_report).setOnClickListener { sendCrash(share = false) }
+        findViewById<View>(R.id.crash_share).setOnClickListener { sendCrash(share = true) }
+        findViewById<View>(R.id.crash_dismiss).setOnClickListener {
+            Crashes.clear(this)
+            showCrash()
         }
 
         otp.setOnEditorActionListener { _, actionId, _ ->
@@ -135,6 +146,7 @@ class MainActivity : Activity() {
         username = settings.username
         useVless = settings.useVless
         VpnState.addObserver(observer)
+        showCrash()
         showUpdate()
         checkForUpdate()
     }
@@ -225,6 +237,56 @@ class MainActivity : Activity() {
         } catch (e: ActivityNotFoundException) {
             Toast.makeText(this, getString(R.string.update_no_browser, url), Toast.LENGTH_LONG).show()
         }
+    }
+
+    /** The crash from an earlier run, if there is one ([Crashes]). */
+    private fun showCrash() {
+        val crash = Crashes.pending(this)
+        crashBox.visibility = if (crash != null) View.VISIBLE else View.GONE
+        if (crash != null) {
+            val time = DateUtils.formatDateTime(this, crash.time,
+                DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_ABBREV_MONTH)
+            crashText.text = getString(R.string.crash_help, crash.kind.label, time)
+        }
+    }
+
+    /**
+     * Opens the report in a new GitHub issue, or in the share sheet. The user
+     * sees and sends it there; the app sends nothing itself.
+     */
+    private fun sendCrash(share: Boolean) {
+        val crash = Crashes.pending(this) ?: return showCrash()
+        val app = BuildConfig.VERSION_NAME
+        val device = CrashReport.Device(
+            app = app,
+            android = "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}), ${Build.SUPPORTED_ABIS.firstOrNull().orEmpty()}",
+            model = "${Build.MANUFACTURER} ${Build.MODEL}",
+            route = getString(
+                if (Route.choose(vless, useVless) == Route.VIA_VLESS) R.string.crash_route_vless
+                else R.string.crash_route_openvpn
+            ),
+        )
+        val secrets = CrashReport.secrets(settings.profile, settings.vless, settings.username)
+        val title = CrashReport.title(crash, app)
+        val body = CrashReport.body(crash, device, secrets)
+        val intent = if (share) {
+            Intent.createChooser(
+                Intent(Intent.ACTION_SEND).setType("text/plain")
+                    .putExtra(Intent.EXTRA_SUBJECT, title)
+                    .putExtra(Intent.EXTRA_TEXT, body),
+                getString(R.string.crash_share),
+            )
+        } else {
+            Intent(Intent.ACTION_VIEW, Uri.parse(CrashReport.issueUrl(title, body)))
+        }
+        try {
+            startActivity(intent)
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(this, getString(R.string.update_no_browser, CrashReport.ISSUE_URL), Toast.LENGTH_LONG).show()
+            return
+        }
+        Crashes.clear(this)
+        showCrash()
     }
 
     private fun showOtpError(show: Boolean) {

@@ -101,6 +101,14 @@
     <string name="update_later">Later</string>
     <string name="update_no_browser">No app can open the link. Go to %1$s</string>
 
+    <string name="crash_title">The app stopped unexpectedly</string>
+    <string name="crash_help">%1$s, %2$s. Nothing has been sent. Report opens a GitHub issue with the details filled in, Share sends them with any app. Either way you see them first. Server addresses, the UUID and your username are hidden.</string>
+    <string name="crash_report">Report</string>
+    <string name="crash_share">Share</string>
+    <string name="crash_dismiss">Dismiss</string>
+    <string name="crash_route_vless">OpenVPN → VLESS</string>
+    <string name="crash_route_openvpn">OpenVPN only</string>
+
     <!-- OpenVPN profile screen -->
     <string name="openvpn_title">OpenVPN profile</string>
     <string name="profile_none">No profile yet</string>
