@@ -214,15 +214,14 @@
                     android:textSize="13sp" />
             </LinearLayout>
 
-            <!-- Public IP check, connected through VLESS only -->
+            <!-- Public IP check: without the VPN, through OpenVPN or through VLESS -->
             <LinearLayout
                 android:id="@+id/ip_box"
                 style="@style/Card"
                 android:layout_marginTop="16dp"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
-                android:paddingBottom="16dp"
-                android:visibility="gone">
+                android:paddingBottom="16dp">
 
                 <TextView
                     style="@style/Text.Caption"

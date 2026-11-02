@@ -3,7 +3,12 @@
 #include <jni.h>
 
 #include <android/log.h>
+#ifdef __ANDROID__
+#include <android/multinetwork.h>
+#include <netdb.h>
+#endif
 
+#include <cstdint>
 #include <mutex>
 #include <string>
 
@@ -15,8 +20,11 @@ JavaVM *g_vm = nullptr;
 jclass g_string_class = nullptr;
 jmethodID g_string_ctor = nullptr;  // String(byte[], String charset)
 
+class JniListener;
+
 std::mutex g_mutex;
-chain::Client *g_client = nullptr;  // running session, guarded by g_mutex
+chain::Client *g_client = nullptr;     // running session, guarded by g_mutex
+JniListener *g_listener = nullptr;     // its listener, guarded by g_mutex
 
 // Detaches threads we attached ourselves when they exit.
 struct ThreadDetacher {
@@ -93,6 +101,8 @@ public:
         on_device_tun_ = env->GetMethodID(
             cls, "onDeviceTun",
             "([Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/String;[Ljava/lang/String;I)I");
+        on_protect_ = env->GetMethodID(cls, "onProtect", "(I)Z");
+        underlying_network_ = env->GetMethodID(cls, "underlyingNetwork", "()J");
         env->DeleteLocalRef(cls);
     }
 
@@ -165,15 +175,72 @@ public:
         return fd;  // Kotlin detached it from its ParcelFileDescriptor
     }
 
+    bool protect(int fd) override {
+        JNIEnv *env = env_for_thread();
+        if (!env)
+            return false;
+        jboolean ok = env->CallBooleanMethod(callbacks_, on_protect_, fd);
+        if (env->ExceptionCheck()) {
+            clear_exception(env);
+            ok = JNI_FALSE;
+        }
+        if (!ok)
+            on_log("could not protect the OpenVPN socket from the VPN");
+        return ok;
+    }
+
+    // The network handle (android.net.Network.getNetworkHandle()) OpenVPN's
+    // own DNS lookups should use, or 0 for the default.
+    std::uint64_t underlying_network() {
+        JNIEnv *env = env_for_thread();
+        if (!env)
+            return 0;
+        jlong handle = env->CallLongMethod(callbacks_, underlying_network_);
+        if (env->ExceptionCheck()) {
+            clear_exception(env);
+            return 0;
+        }
+        return static_cast<std::uint64_t>(handle);
+    }
+
 private:
     jobject callbacks_;
     jmethodID on_log_;
     jmethodID on_event_;
     jmethodID on_tun_;
     jmethodID on_device_tun_;
+    jmethodID on_protect_;
+    jmethodID underlying_network_;
 };
 
 }  // namespace
+
+#ifdef __ANDROID__
+// OpenVPN only (chain::Mode::Device), the app is inside its own VPN, so a
+// plain getaddrinfo() goes to the VPN's DNS servers, through the tunnel. When
+// OpenVPN 3 reconnects it looks the server's hostname up again, while the
+// tunnel is down and the TUN is kept (tunPersist): that lookup would never be
+// answered. So this library's getaddrinfo() calls (OpenVPN 3's resolver, via
+// asio; linked with -Wl,--wrap=getaddrinfo) use the network under the VPN
+// instead, as the protected transport socket does. The VPN app may do this:
+// it can protect its sockets. Everything else falls through to libc.
+extern "C" int __real_getaddrinfo(const char *node, const char *service, const addrinfo *hints,
+                                  addrinfo **res);
+
+extern "C" int __wrap_getaddrinfo(const char *node, const char *service, const addrinfo *hints,
+                                  addrinfo **res) {
+    net_handle_t network = NETWORK_UNSPECIFIED;
+    {
+        std::lock_guard<std::mutex> lock(g_mutex);
+        if (g_client && g_listener && g_client->mode() == chain::Mode::Device)
+            network = g_listener->underlying_network();
+    }
+    if (network != NETWORK_UNSPECIFIED &&
+        android_getaddrinfofornetwork(network, node, service, hints, res) == 0)
+        return 0;
+    return __real_getaddrinfo(node, service, hints, res);
+}
+#endif
 
 extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *) {
     g_vm = vm;
@@ -204,6 +271,7 @@ Java_io_github_meshkati_ovpnvless_OpenVpn3_run(JNIEnv *env, jobject, jstring pro
         if (g_client)
             return to_jstring(env, "an OpenVPN session is already running");
         g_client = &client;
+        g_listener = &listener;
     }
 
     std::string err;
@@ -218,6 +286,7 @@ Java_io_github_meshkati_ovpnvless_OpenVpn3_run(JNIEnv *env, jobject, jstring pro
     {
         std::lock_guard<std::mutex> lock(g_mutex);
         g_client = nullptr;
+        g_listener = nullptr;
     }
     return err.empty() ? nullptr : to_jstring(env, err);
 }

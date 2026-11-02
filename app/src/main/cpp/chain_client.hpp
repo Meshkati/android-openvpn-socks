@@ -82,6 +82,11 @@ public:
     // descriptor configured as `cfg` says, which OpenVPN 3 owns from then on,
     // or -1 to fail the connection.
     virtual int on_device_tun(const TunConfig &cfg) = 0;
+    // Mode::Device: keep OpenVPN's transport socket `fd` out of the device
+    // TUN (VpnService.protect). The app is inside its own VPN in this mode, so
+    // without it OpenVPN would try to tunnel through itself. Returning false
+    // fails the connection attempt.
+    virtual bool protect(int fd) = 0;
 };
 
 class Client : public openvpn::ClientAPI::OpenVPNClient {
@@ -168,9 +173,16 @@ public:
 
     // --- OpenVPNClient -----------------------------------------------------
 
-    // The app excludes itself from its own VpnService, so the OpenVPN
-    // transport socket never loops back into the device TUN.
-    bool socket_protect(openvpn_io::detail::socket_type, std::string, bool) override { return true; }
+    // Mode::Chain: the app excludes itself from its own VpnService, so the
+    // OpenVPN transport socket never loops back into the device TUN.
+    // Mode::Device: the app is inside its VPN (so its own requests, like the
+    // IP check, use the tunnel), and the socket is protected instead.
+    bool socket_protect(openvpn_io::detail::socket_type socket, std::string, bool) override {
+        return mode_ == Mode::Chain || listener_.protect(socket);
+    }
+
+    // Which mode run() was called with.
+    Mode mode() const { return mode_; }
 
     bool pause_on_connection_timeout() override { return false; }
 

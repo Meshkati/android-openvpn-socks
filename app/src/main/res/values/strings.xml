@@ -109,9 +109,16 @@
     <string name="ip_not_checked">Not checked</string>
     <string name="ip_checking">Checking…</string>
     <string name="ip_check_failed">Couldn\'t check</string>
-    <string name="ip_check_help">Asks ifconfig.me through VLESS, like your apps.</string>
-    <string name="ip_check_running">Asking ifconfig.me through VLESS</string>
-    <string name="ip_check_done">Through VLESS · %1$.1f s</string>
+    <string name="ip_check_help_vless">Asks ifconfig.me through VLESS, like your apps.</string>
+    <string name="ip_check_help_openvpn">Asks ifconfig.me through OpenVPN, like your apps.</string>
+    <string name="ip_check_help_direct">Asks ifconfig.me without the VPN: your real IP.</string>
+    <string name="ip_check_help_wait">Wait until the VPN is connected or off.</string>
+    <string name="ip_check_running_vless">Asking ifconfig.me through VLESS</string>
+    <string name="ip_check_running_openvpn">Asking ifconfig.me through OpenVPN</string>
+    <string name="ip_check_running_direct">Asking ifconfig.me without the VPN</string>
+    <string name="ip_check_done_vless">Through VLESS · %1$.1f s</string>
+    <string name="ip_check_done_openvpn">Through OpenVPN · %1$.1f s</string>
+    <string name="ip_check_done_direct">Without the VPN · %1$.1f s</string>
 
     <!-- Home: new release on GitHub -->
     <string name="update_available">Version %1$s is available</string>

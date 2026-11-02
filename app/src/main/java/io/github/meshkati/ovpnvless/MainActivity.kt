@@ -23,8 +23,8 @@ import android.widget.Toast
 /**
  * Home: the connect toggle, the status, the route and, if needed, the
  * authenticator code. The route's VLESS step has a switch: off, or with no
- * VLESS server saved, the app connects with OpenVPN only. Once connected
- * through VLESS, a card checks the public IP ([IpCheck]) and shows its log.
+ * VLESS server saved, the app connects with OpenVPN only. A card checks the
+ * public IP ([IpCheck]), the way apps' traffic goes now, and shows its log.
  * Below, a notice when GitHub has a newer release.
  */
 class MainActivity : Activity() {
@@ -51,7 +51,6 @@ class MainActivity : Activity() {
     private lateinit var otpHelp: TextView
     private lateinit var infoBox: View
     private lateinit var infoText: TextView
-    private lateinit var ipBox: View
     private lateinit var ipValue: TextView
     private lateinit var ipMeta: TextView
     private lateinit var checkIp: Button
@@ -68,6 +67,8 @@ class MainActivity : Activity() {
     private var username = ""
     private var useVless = true
     private var stage = Stage.NOT_SET_UP
+    // How Check IP would go now; null while connecting or disconnecting.
+    private var ipVia: IpCheck.Via? = null
     private var update: Version? = null
     private val observer = { render() }
 
@@ -96,7 +97,6 @@ class MainActivity : Activity() {
         otpHelp = findViewById(R.id.otp_help)
         infoBox = findViewById(R.id.info_box)
         infoText = findViewById(R.id.info_text)
-        ipBox = findViewById(R.id.ip_box)
         ipValue = findViewById(R.id.ip_value)
         ipMeta = findViewById(R.id.ip_meta)
         checkIp = findViewById(R.id.check_ip)
@@ -109,7 +109,7 @@ class MainActivity : Activity() {
         fpText = findViewById(R.id.fp_text)
 
         toggle.setOnClickListener { onToggle() }
-        checkIp.setOnClickListener { IpCheck.start() }
+        checkIp.setOnClickListener { ipVia?.let(IpCheck::start) }
         hopOpenVpn.setOnClickListener { startActivity(Intent(this, OpenVpnActivity::class.java)) }
         hopVless.setOnClickListener { startActivity(Intent(this, VlessActivity::class.java)) }
         hopVless.switch.contentDescription = getString(R.string.use_vless)
@@ -432,15 +432,15 @@ class MainActivity : Activity() {
             if (route == Route.VIA_VLESS) R.string.connected_info_vless else R.string.connected_info_openvpn
         )
 
-        // Public IP check. It needs the VLESS engine: with OpenVPN only, a
-        // request from this app (excluded from its own VPN) can't use the tunnel.
-        val canCheckIp = stage == Stage.CONNECTED && route == Route.VIA_VLESS
-        ipBox.visibility = if (canCheckIp) View.VISIBLE else View.GONE
-        if (canCheckIp) bindIpCheck()
+        // Public IP check: without the VPN, through OpenVPN or through VLESS,
+        // whichever way apps' traffic goes now.
+        ipVia = IpCheck.Via.of(stage, route)
+        bindIpCheck()
     }
 
     private fun bindIpCheck() {
         val check = IpCheck.state
+        val via = if (check == IpCheck.State.IDLE) ipVia else IpCheck.via
         setTextKeepingSelection(ipValue, when (check) {
             IpCheck.State.IDLE -> getString(R.string.ip_not_checked)
             IpCheck.State.RUNNING -> getString(R.string.ip_checking)
@@ -453,12 +453,25 @@ class MainActivity : Activity() {
             else -> R.color.muted
         }))
         ipMeta.text = when (check) {
-            IpCheck.State.IDLE -> getString(R.string.ip_check_help)
-            IpCheck.State.RUNNING -> getString(R.string.ip_check_running)
-            IpCheck.State.DONE -> getString(R.string.ip_check_done, IpCheck.millis / 1000.0)
+            IpCheck.State.IDLE -> getString(when (via) {
+                IpCheck.Via.VLESS -> R.string.ip_check_help_vless
+                IpCheck.Via.OPENVPN -> R.string.ip_check_help_openvpn
+                IpCheck.Via.DIRECT -> R.string.ip_check_help_direct
+                null -> R.string.ip_check_help_wait
+            })
+            IpCheck.State.RUNNING -> getString(when (via) {
+                IpCheck.Via.VLESS -> R.string.ip_check_running_vless
+                IpCheck.Via.OPENVPN -> R.string.ip_check_running_openvpn
+                else -> R.string.ip_check_running_direct
+            })
+            IpCheck.State.DONE -> getString(when (via) {
+                IpCheck.Via.VLESS -> R.string.ip_check_done_vless
+                IpCheck.Via.OPENVPN -> R.string.ip_check_done_openvpn
+                else -> R.string.ip_check_done_direct
+            }, IpCheck.millis / 1000.0)
             IpCheck.State.FAILED -> IpCheck.result
         }
-        checkIp.isEnabled = check != IpCheck.State.RUNNING
+        checkIp.isEnabled = check != IpCheck.State.RUNNING && ipVia != null
         checkIp.alpha = if (checkIp.isEnabled) 1f else 0.45f
         checkIp.setText(if (check == IpCheck.State.IDLE) R.string.check_ip else R.string.check_ip_again)
 

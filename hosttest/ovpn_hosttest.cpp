@@ -99,6 +99,9 @@ public:
         return fd;
     }
 
+    // The server is reached over the veth pair, which no pushed route covers.
+    bool protect(int) override { return true; }
+
 private:
     static constexpr const char *kIface = "ovpnhost";
 

@@ -60,7 +60,14 @@ the device TUN from what the server pushed (addresses, routes, DNS servers and s
 domains) and returns its file descriptor, which OpenVPN 3 then reads and writes,
 as in any OpenVPN app. `redirect-gateway` becomes a `0.0.0.0/0` route; OpenVPN 3
 splits routes around excluded ones itself, since Android before 13 can't exclude
-routes. The app still excludes itself from the VPN, for the same reason.
+routes. Here the app stays inside its own VPN, so its own requests (the IP check, the
+update check) go through OpenVPN like other apps'. OpenVPN's transport socket is kept
+out of the tunnel with `VpnService.protect()` instead (`socket_protect()`), and its DNS
+lookups of the server's hostname use the network under the VPN: the library is linked
+with `-Wl,--wrap=getaddrinfo`, and the wrapper calls `android_getaddrinfofornetwork()`
+on the Wi-Fi or mobile network (`UnderlyingNetworks`). Without that, OpenVPN 3 would look
+the server up again on every reconnect through the VPN's own DNS, inside the tunnel
+that is down at that moment.
 
 ## What goes through the tunnel
 
@@ -94,7 +101,8 @@ What the OpenVPN server pushes decides it, as with other OpenVPN apps:
 * **IPv6** follows the same rules if the server sets it up (`ifconfig-ipv6`,
   `route-ipv6`, `redirect-gateway ipv6`). If it sets up no IPv6 at all, Android blocks
   IPv6 while the VPN is up.
-* **Not this app's own traffic**, as above.
+* **This app's own traffic too** (the IP check, the update check), except OpenVPN's
+  connection to its server and its DNS lookups of the server, as above.
 
 ### TUN stack: gVisor
 
@@ -145,8 +153,10 @@ Notes on the choices:
 app/                      Android app (Kotlin, no AndroidX)
   src/main/cpp/           OpenVPN 3 JNI library (CMake, fetches deps at configure time)
     chain_client.hpp      OpenVPN 3 client with socketpair or device TUN (JNI-free)
-    ovpn3_jni.cpp         JNI bridge to io.github.meshkati.ovpnvless.OpenVpn3
-  src/main/java/.../      ChainVpnService, OpenVpn3, VpnState, Settings, and the UI:
+    ovpn3_jni.cpp         JNI bridge to io.github.meshkati.ovpnvless.OpenVpn3, and the
+                          getaddrinfo wrapper for OpenVPN-only sessions
+  src/main/java/.../      ChainVpnService, OpenVpn3, UnderlyingNetworks, VpnState,
+                          IpCheck, Settings, and the UI:
                           MainActivity (home), OpenVpnActivity, ProfileTextActivity,
                           VlessActivity, LogActivity, DonateActivity, and the
                           home-screen widgets (Widgets, WidgetState)
@@ -281,16 +291,21 @@ plain words, and your route: OpenVPN, then VLESS. Tap a step of the route to set
 4. Tap the round button and accept the VPN prompt. If connecting fails, the home screen
    says why and which step failed. The log (top-right icon) shows the OpenVPN 3 and Xray
    output, and can be filtered and copied.
-5. **Check IP**: once connected through VLESS, the home screen has a **Public IP** card.
-   **Check IP** asks `https://ifconfig.me/ip` and shows the address it sees, with the
-   full log of the request under it: the stream opened through Xray, the TLS handshake
-   and certificate, the request and response headers, the body, and any Xray lines
-   logged meanwhile. The same lines go to the log screen as `ip check: …`.
-   The app is excluded from its own VPN, so the request doesn't use the device TUN. The
-   Go engine sends it into Xray's routing (`core.Dial`), the way apps' traffic leaves,
-   and the VLESS server looks up `ifconfig.me`. With OpenVPN only there is no engine, and
-   this app's own sockets bypass the tunnel, so the card isn't shown. Open
-   ifconfig.me in a browser instead.
+5. **Check IP**: the home screen's **Public IP** card asks `https://ifconfig.me/ip` and
+   shows the address it sees, with the full log of the request under it. The same lines
+   go to the log screen as `ip check: …`. It goes the way apps' traffic goes at that
+   moment, and the card says which:
+   * **VPN off**: straight over the network, so it shows your real IP.
+   * **OpenVPN only**: the app is inside its own VPN in this mode, so a plain request
+     goes through OpenVPN like any app's.
+   * **Through VLESS**: the app is excluded from its own VPN, so the request doesn't use
+     the device TUN. The Go engine sends it into Xray's routing (`core.Dial`), the way
+     apps' traffic leaves, and the VLESS server looks up `ifconfig.me`. The log also
+     shows the stream opened through Xray, the TLS handshake and certificate, and any
+     Xray lines logged meanwhile.
+
+   While connecting or disconnecting the button waits. The result is cleared when a
+   connection starts or ends, so an old IP is never shown for the new state.
 
 The UI follows the system light/dark setting.
 
@@ -343,8 +358,9 @@ the old one; the settings stay.
 * The app only reads `api.github.com/repos/Meshkati/android-openvpn-socks/releases/latest`
   over HTTPS. The request carries no account, device or settings, only a
   `User-Agent: ovpnvless/<version> (Android)` header, which GitHub requires. GitHub sees
-  the phone's IP address. The app is excluded from its own VPN, so this request goes
-  over the normal network, connected or not.
+  the phone's IP address. With VLESS the app is excluded from its own VPN, so this
+  request goes over the normal network, connected or not. With OpenVPN only it goes
+  through OpenVPN while connected.
 * It never downloads or installs anything itself. The link it opens is built from the
   version number, so it always points at this repository. Android installs an update
   only if it is signed with the same key as the installed app, so an APK from
@@ -382,8 +398,8 @@ the username, and any other UUID or IPv4 address are replaced with `[server]`, `
 and `[ip]`. An error message can still name something unexpected, so the user sees the
 text before sending it. The app log is never included.
 
-Why not Sentry or similar: the app is excluded from its own VPN, so a crash upload
-would go over the normal network. The service, and anyone watching the network, would
+Why not Sentry or similar: with VLESS the app is excluded from its own VPN, so a crash
+upload would go over the normal network. The service, and anyone watching the network, would
 learn the user's real IP and that they use this app.
 
 ## Testing
@@ -395,7 +411,8 @@ learn the user's real IP and that they use this app.
   only (gVisor).
 * `./gradlew :app:testDebugUnitTest` runs the app's JVM unit tests: the profile and
   `vless://` summaries the UI shows, the mapping from OpenVPN events and errors
-  to status text, the choice between the two routes, what the widgets show in each state, the version comparison and
+  to status text, the choice between the two routes, how the IP check goes in each state and
+  what counts as an IP in its answer, what the widgets show in each state, the version comparison and
   timing of the update check, the donation amounts, and the crash report (reading a tombstone, hiding
   servers and addresses, cutting the GitHub link to size).
 * `sudo hosttest/run-e2e.sh` (Linux, needs `openvpn dnsmasq openssl python3 go cmake ninja`)
