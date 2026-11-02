@@ -10,7 +10,11 @@ include(cmake/openvpn3.cmake)
 add_library(ovpn3jni SHARED ovpn3_jni.cpp)
 add_openvpn3_core(ovpn3jni)
 target_include_directories(ovpn3jni PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(ovpn3jni PRIVATE log)
+# android_getaddrinfofornetwork() is in libandroid.
+target_link_libraries(ovpn3jni PRIVATE log android)
+# OpenVPN 3's DNS lookups go through __wrap_getaddrinfo (ovpn3_jni.cpp), which
+# keeps them out of the VPN when the app is inside it (OpenVPN only).
+target_link_options(ovpn3jni PRIVATE "-Wl,--wrap=getaddrinfo")
 # 16 KB page alignment, required on Android 15+ devices with 16 KB pages
 # (the default from NDK r28 on).
 target_link_options(ovpn3jni PRIVATE "-Wl,-z,max-page-size=16384")

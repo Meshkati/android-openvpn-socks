@@ -28,6 +28,21 @@ object OpenVpn3 {
         fun onDeviceTun(
             addresses: Array<String>, routes: Array<String>, dns: Array<String>, searchDomains: Array<String>, mtu: Int
         ): Int
+
+        /**
+         * [Route.OPENVPN_ONLY]: keep OpenVPN's transport socket [fd] out of the
+         * VPN ([android.net.VpnService.protect]), since the app is inside it.
+         * False fails the connection attempt.
+         */
+        fun onProtect(fd: Int): Boolean
+
+        /**
+         * [Route.OPENVPN_ONLY]: the network OpenVPN's own DNS lookups use (the
+         * server's hostname), as [android.net.Network.getNetworkHandle], or 0
+         * for the default. Called on OpenVPN 3's resolver thread; must not
+         * wait for anything that calls [stop].
+         */
+        fun underlyingNetwork(): Long
     }
 
     /**

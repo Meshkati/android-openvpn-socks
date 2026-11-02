@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.net.ConnectivityManager
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
@@ -27,8 +28,11 @@ import kotlin.concurrent.thread
  * OpenVPN 3 -> network. OpenVPN 3 asks for the TUN (onDeviceTun) and gets the
  * device TUN, built with the addresses, routes and DNS its server pushed.
  *
- * Either way this app excludes itself from the VPN so OpenVPN's own transport
- * socket goes straight to the network.
+ * With VLESS this app excludes itself from the VPN, so OpenVPN's transport
+ * socket goes straight to the network. With OpenVPN only it stays inside,
+ * so its own requests (the IP check) use the tunnel like other apps': OpenVPN's
+ * socket is protected instead (onProtect), and its DNS lookups of the server
+ * use the network under the VPN (underlyingNetwork).
  */
 class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
 
@@ -64,6 +68,9 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
     // Notification text: "<OpenVPN server> → <VLESS server>".
     private var route = ""
 
+    // Tracked during OpenVPN-only sessions; see underlyingNetwork().
+    private val underlying by lazy { UnderlyingNetworks(getSystemService(ConnectivityManager::class.java)) }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_DISCONNECT) {
             disconnect()
@@ -98,6 +105,7 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         vlessConfig = if (sessionRoute == Route.VIA_VLESS) settings.vless else ""
         VpnState.startSession(sessionRoute)
         IpCheck.reset()
+        if (sessionRoute == Route.OPENVPN_ONLY) underlying.start()
         VpnState.set(VpnState.Phase.CONNECTING, "starting OpenVPN")
         if (sessionRoute == Route.VIA_VLESS) {
             Crashes.watchEngine(this)
@@ -118,7 +126,10 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
             }
             VpnState.log(error?.let { "OpenVPN error: $it" } ?: "OpenVPN session ended")
             stopEngine()
+            underlying.stop()
             synchronized(this) { session = null }
+            // A result from the tunnel would read as the IP without the VPN.
+            IpCheck.reset()
             VpnState.set(VpnState.Phase.DISCONNECTED, error ?: "")
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
@@ -197,9 +208,9 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
             val builder = Builder()
                 .setSession(getString(R.string.app_name))
                 .setMtu(mtu)
-                // Our own sockets (OpenVPN's transport) must bypass the TUN,
-                // or OpenVPN would try to tunnel through itself.
-                .addDisallowedApplication(packageName)
+            // This app is not excluded: its own requests (the IP check, the
+            // update check) go through OpenVPN like other apps'. OpenVPN's
+            // transport socket is protected instead (onProtect).
             // An address family with no address or route here is blocked
             // while the VPN is up (Android's default), e.g. IPv6 when the
             // server sets up only IPv4.
@@ -215,6 +226,10 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
             -1
         }
     }
+
+    override fun onProtect(fd: Int): Boolean = protect(fd)
+
+    override fun underlyingNetwork(): Long = underlying.best()
 
     /** The device TUN is up: the session is connected. */
     private fun tunnelUp(addresses: Array<String>) {
