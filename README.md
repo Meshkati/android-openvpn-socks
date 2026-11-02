@@ -315,6 +315,14 @@ The coffee icon on the home screen opens **Buy me a coffee**: **A coffee** ($2.9
 `https://paypal.me/meshkati/<amount>USD` in the browser, where PayPal asks to confirm
 the payment. The app makes no request itself and stores nothing about it.
 
+### About
+
+The info icon on the home screen opens **About**: the app version and the versions of
+the two cores built into it, **Xray-core** (e.g. `26.10.10`) and **OpenVPN 3 core**
+(e.g. `3.11.7`). The copy icon puts all three on the clipboard, for a bug report, and
+**Source code on GitHub** opens this repository. The log also names the core versions
+at the start of each connection (Xray-core's only when the connection uses VLESS).
+
 ### Updates
 
 The app is not on Google Play; new versions are on the

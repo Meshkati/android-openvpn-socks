@@ -41,6 +41,9 @@
             android:name=".DonateActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".AboutActivity"
+            android:exported="false" />
 
         <!-- Home-screen widgets (Widgets.kt) -->
         <receiver

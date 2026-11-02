@@ -122,6 +122,9 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.open_donate).setOnClickListener {
             startActivity(Intent(this, DonateActivity::class.java))
         }
+        findViewById<View>(R.id.open_about).setOnClickListener {
+            startActivity(Intent(this, AboutActivity::class.java))
+        }
         findViewById<View>(R.id.update_download).setOnClickListener { update?.let(::openReleasePage) }
         findViewById<View>(R.id.update_later).setOnClickListener {
             update?.let { settings.dismissedRelease = "v$it" }
