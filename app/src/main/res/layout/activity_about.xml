@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    style="@style/Screen">
+
+    <LinearLayout style="@style/AppBar">
+
+        <ImageButton
+            android:id="@+id/back"
+            style="@style/IconButton"
+            android:contentDescription="@string/back"
+            android:src="@drawable/ic_arrow_back" />
+
+        <TextView
+            style="@style/AppBarTitle"
+            android:layout_marginStart="4dp"
+            android:text="@string/about" />
+
+        <ImageButton
+            android:id="@+id/copy"
+            style="@style/IconButton"
+            android:contentDescription="@string/about_copy"
+            android:src="@drawable/ic_copy" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout style="@style/Content">
+
+            <ImageView
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="8dp"
+                android:importantForAccessibility="no"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_vpn"
+                android:tint="@color/accent" />
+
+            <TextView
+                style="@style/Text.State"
+                android:layout_marginTop="12dp"
+                android:accessibilityLiveRegion="none"
+                android:text="@string/app_name"
+                android:textSize="22sp" />
+
+            <TextView
+                android:id="@+id/about_version"
+                style="@style/Text.Hint"
+                android:layout_marginTop="4dp" />
+
+            <TextView
+                style="@style/Text.Section"
+                android:layout_marginTop="28dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/about_versions" />
+
+            <LinearLayout style="@style/Card">
+
+                <LinearLayout style="@style/AboutRow">
+
+                    <TextView
+                        style="@style/AboutRowLabel"
+                        android:text="@string/about_app" />
+
+                    <TextView
+                        android:id="@+id/version_app"
+                        style="@style/AboutRowValue" />
+                </LinearLayout>
+
+                <LinearLayout style="@style/AboutRow">
+
+                    <TextView
+                        style="@style/AboutRowLabel"
+                        android:text="@string/about_xray" />
+
+                    <TextView
+                        android:id="@+id/version_xray"
+                        style="@style/AboutRowValue"
+                        android:text="@string/about_loading" />
+                </LinearLayout>
+
+                <LinearLayout style="@style/AboutRow">
+
+                    <TextView
+                        style="@style/AboutRowLabel"
+                        android:text="@string/about_openvpn" />
+
+                    <TextView
+                        android:id="@+id/version_openvpn"
+                        style="@style/AboutRowValue"
+                        android:text="@string/about_loading" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView
+                style="@style/Text.Help"
+                android:text="@string/about_versions_help" />
+
+            <Button
+                android:id="@+id/about_source"
+                style="@style/Button.Line"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="24dp"
+                android:text="@string/about_source" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

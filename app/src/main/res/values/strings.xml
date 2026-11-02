@@ -132,6 +132,19 @@
     <string name="donate_custom_invalid">Enter an amount in US dollars, like 5 or 7.50</string>
     <string name="donate_privacy">Opens PayPal (paypal.me/meshkati) in your browser. The app doesn\'t see the payment and keeps nothing about it. PayPal isn\'t available in every country.</string>
 
+    <string name="about">About</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_versions">Versions</string>
+    <string name="about_app">App</string>
+    <string name="about_xray">Xray-core</string>
+    <string name="about_openvpn">OpenVPN 3 core</string>
+    <string name="about_loading">…</string>
+    <string name="about_unknown">unknown</string>
+    <string name="about_versions_help">Xray-core carries the VLESS connection, OpenVPN 3 core the OpenVPN one. Both are built into the app; they update with it.</string>
+    <string name="about_copy">Copy versions</string>
+    <string name="about_copied">Versions copied</string>
+    <string name="about_source">Source code on GitHub</string>
+
     <string name="crash_title">The app stopped unexpectedly</string>
     <string name="crash_help">%1$s, %2$s. Nothing has been sent. Report opens a GitHub issue with the details filled in, Share sends them with any app. Either way you see them first. Server addresses, the UUID and your username are hidden.</string>
     <string name="crash_report">Report</string>

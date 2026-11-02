@@ -22,6 +22,12 @@
             style="@style/IconButton"
             android:contentDescription="@string/log"
             android:src="@drawable/ic_log" />
+
+        <ImageButton
+            android:id="@+id/open_about"
+            style="@style/IconButton"
+            android:contentDescription="@string/about"
+            android:src="@drawable/ic_info" />
     </LinearLayout>
 
     <ScrollView
