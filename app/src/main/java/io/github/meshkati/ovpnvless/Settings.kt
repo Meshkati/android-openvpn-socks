@@ -27,6 +27,14 @@ class Settings(context: Context) {
         get() = prefs.getBoolean("use_vless", true)
         set(v) = prefs.edit().putBoolean("use_vless", v).apply()
 
+    /**
+     * The VLESS setting the user chose to keep despite its randomized TLS
+     * fingerprint ([Fingerprint]). The home screen warns again once it changes.
+     */
+    var keptFingerprint: String
+        get() = prefs.getString("kept_fingerprint", "")!!
+        set(v) = prefs.edit().putString("kept_fingerprint", v).apply()
+
     /** The latest release tag GitHub reported, e.g. "v0.2.0". */
     var latestRelease: String
         get() = prefs.getString("latest_release", "")!!

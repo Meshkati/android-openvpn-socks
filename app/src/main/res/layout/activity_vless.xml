@@ -72,6 +72,47 @@
                     android:orientation="vertical" />
             </LinearLayout>
 
+            <LinearLayout
+                android:id="@+id/fp_box"
+                style="@style/Notice.Warn"
+                android:layout_marginTop="16dp"
+                android:visibility="gone">
+
+                <ImageView
+                    style="@style/NoticeIcon"
+                    android:src="@drawable/ic_alert"
+                    android:tint="@color/warn" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Text"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="@string/fp_warning_title"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/fp_text"
+                        style="@style/Text"
+                        android:layout_marginTop="4dp"
+                        android:textColor="@color/muted"
+                        android:textSize="13sp" />
+
+                    <Button
+                        android:id="@+id/fp_fix"
+                        style="@style/Button.Text"
+                        android:layout_height="40dp"
+                        android:layout_marginStart="-12dp"
+                        android:layout_marginTop="2dp"
+                        android:layout_marginBottom="-8dp"
+                        android:text="@string/fp_use_safe" />
+                </LinearLayout>
+            </LinearLayout>
+
             <TextView
                 android:id="@+id/vless_help"
                 style="@style/Text.Help"

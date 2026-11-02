@@ -199,6 +199,14 @@
     <string name="row_sni">SNI</string>
     <string name="row_name">Name</string>
 
+    <!-- Randomized TLS fingerprint in the VLESS link (Fingerprint.kt) -->
+    <string name="fp_warning_title">This link\'s TLS fingerprint can stop VLESS from working</string>
+    <string name="fp_warning_help">It uses fp=%1$s. Xray picks the random fingerprint when the app starts, and some picks don\'t work with servers that prefer post-quantum TLS, such as Cloudflare\'s: nothing gets through until the app restarts, and the log shows \"CurvePreferences includes unsupported curve\". fp=chrome avoids this.</string>
+    <string name="fp_use_safe">Use fp=chrome</string>
+    <string name="fp_keep">Keep</string>
+    <string name="fp_switched">Switched to fp=chrome.</string>
+    <string name="fp_switched_reconnect">Switched to fp=chrome. Reconnect to use it.</string>
+
     <!-- Log screen -->
     <string name="log_all">All</string>
     <string name="log_openvpn">OpenVPN</string>
