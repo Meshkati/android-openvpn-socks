@@ -288,9 +288,9 @@ The UI follows the system light/dark setting.
 
 ### Donate
 
-The coffee icon on the home screen opens **Buy me a coffee**: **A coffee** ($3),
-**A lunch** ($10), or any amount from $1 to $10,000. Each opens
-`https://paypal.me/Meshkati/<amount>USD` in the browser, where PayPal asks to confirm
+The coffee icon on the home screen opens **Buy me a coffee**: **A coffee** ($2.99),
+**A lunch** ($9.99), or any amount from $1 to $10,000. Each opens
+`https://paypal.me/meshkati/<amount>USD` in the browser, where PayPal asks to confirm
 the payment. The app makes no request itself and stores nothing about it.
 
 ### Updates

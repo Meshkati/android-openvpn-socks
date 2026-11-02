@@ -8,8 +8,8 @@ class DonateTest {
 
     @Test
     fun presetLinks() {
-        assertEquals("https://paypal.me/Meshkati/3USD", Donate.url(Donate.COFFEE))
-        assertEquals("https://paypal.me/Meshkati/10USD", Donate.url(Donate.LUNCH))
+        assertEquals("https://paypal.me/meshkati/2.99USD", Donate.url(Donate.COFFEE))
+        assertEquals("https://paypal.me/meshkati/9.99USD", Donate.url(Donate.LUNCH))
     }
 
     @Test

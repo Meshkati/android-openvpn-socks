@@ -111,7 +111,7 @@
     <string name="donate_custom_button">Donate</string>
     <string name="donate_custom_help">Any amount from $1 to $10,000. PayPal lets you change it before paying.</string>
     <string name="donate_custom_invalid">Enter an amount in US dollars, like 5 or 7.50</string>
-    <string name="donate_privacy">Opens PayPal (paypal.me/Meshkati) in your browser. The app doesn\'t see the payment and keeps nothing about it. PayPal isn\'t available in every country.</string>
+    <string name="donate_privacy">Opens PayPal (paypal.me/meshkati) in your browser. The app doesn\'t see the payment and keeps nothing about it. PayPal isn\'t available in every country.</string>
 
     <string name="crash_title">The app stopped unexpectedly</string>
     <string name="crash_help">%1$s, %2$s. Nothing has been sent. Report opens a GitHub issue with the details filled in, Share sends them with any app. Either way you see them first. Server addresses, the UUID and your username are hidden.</string>

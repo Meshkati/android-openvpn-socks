@@ -7,10 +7,10 @@ import java.math.BigDecimal
  * it never sees or keeps anything about the payment.
  */
 object Donate {
-    const val PAYPAL = "https://paypal.me/Meshkati"
+    const val PAYPAL = "https://paypal.me/meshkati"
     const val CURRENCY = "USD"
-    const val COFFEE = "3"
-    const val LUNCH = "10"
+    const val COFFEE = "2.99"
+    const val LUNCH = "9.99"
     private val MAX = BigDecimal(10_000)
 
     private val AMOUNT = Regex("""\d{1,5}(\.\d{1,2})?""")
@@ -38,6 +38,6 @@ object Donate {
         return value.stripTrailingZeros().toPlainString()
     }
 
-    /** e.g. https://paypal.me/Meshkati/3USD */
+    /** e.g. https://paypal.me/meshkati/2.99USD */
     fun url(amount: String) = "$PAYPAL/$amount$CURRENCY"
 }
