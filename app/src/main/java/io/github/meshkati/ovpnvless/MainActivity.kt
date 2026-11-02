@@ -111,6 +111,9 @@ class MainActivity : Activity() {
         val openLog = View.OnClickListener { startActivity(Intent(this, LogActivity::class.java)) }
         findViewById<View>(R.id.open_log).setOnClickListener(openLog)
         findViewById<View>(R.id.view_log).setOnClickListener(openLog)
+        findViewById<View>(R.id.open_donate).setOnClickListener {
+            startActivity(Intent(this, DonateActivity::class.java))
+        }
         findViewById<View>(R.id.update_download).setOnClickListener { update?.let(::openReleasePage) }
         findViewById<View>(R.id.update_later).setOnClickListener {
             update?.let { settings.dismissedRelease = "v$it" }

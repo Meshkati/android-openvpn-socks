@@ -37,6 +37,10 @@
         <activity
             android:name=".LogActivity"
             android:exported="false" />
+        <activity
+            android:name=".DonateActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
 
         <service
             android:name=".ChainVpnService"

@@ -12,6 +12,12 @@
             android:text="@string/app_name" />
 
         <ImageButton
+            android:id="@+id/open_donate"
+            style="@style/IconButton"
+            android:contentDescription="@string/donate"
+            android:src="@drawable/ic_coffee" />
+
+        <ImageButton
             android:id="@+id/open_log"
             style="@style/IconButton"
             android:contentDescription="@string/log"

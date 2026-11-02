@@ -101,6 +101,18 @@
     <string name="update_later">Later</string>
     <string name="update_no_browser">No app can open the link. Go to %1$s</string>
 
+    <string name="donate">Buy me a coffee</string>
+    <string name="donate_title">Buy me a coffee</string>
+    <string name="donate_intro">This app is free, with no ads and no tracking. If it helps you, you can buy me a coffee. Thank you!</string>
+    <string name="donate_coffee">☕  A coffee · $%1$s</string>
+    <string name="donate_lunch">🍽  A lunch · $%1$s</string>
+    <string name="donate_custom_label">Or choose an amount</string>
+    <string name="donate_custom_hint">Amount in USD</string>
+    <string name="donate_custom_button">Donate</string>
+    <string name="donate_custom_help">Any amount from $1 to $10,000. PayPal lets you change it before paying.</string>
+    <string name="donate_custom_invalid">Enter an amount in US dollars, like 5 or 7.50</string>
+    <string name="donate_privacy">Opens PayPal (paypal.me/meshkati) in your browser. The app doesn\'t see the payment and keeps nothing about it. PayPal isn\'t available in every country.</string>
+
     <string name="crash_title">The app stopped unexpectedly</string>
     <string name="crash_help">%1$s, %2$s. Nothing has been sent. Report opens a GitHub issue with the details filled in, Share sends them with any app. Either way you see them first. Server addresses, the UUID and your username are hidden.</string>
     <string name="crash_report">Report</string>
