@@ -148,7 +148,7 @@ app/                      Android app (Kotlin, no AndroidX)
     ovpn3_jni.cpp         JNI bridge to io.github.meshkati.ovpnvless.OpenVpn3
   src/main/java/.../      ChainVpnService, OpenVpn3, VpnState, Settings, and the UI:
                           MainActivity (home), OpenVpnActivity, ProfileTextActivity,
-                          VlessActivity, LogActivity
+                          VlessActivity, LogActivity, DonateActivity
   src/test/               JVM unit tests for the profile/link summaries and status text
 design/                   UI sketches and screenshots
 engine/                   Go: Xray-core + gVisor stack, gomobile API, vless:// parser
@@ -286,6 +286,13 @@ plain words, and your route: OpenVPN, then VLESS. Tap a step of the route to set
 
 The UI follows the system light/dark setting.
 
+### Donate
+
+The coffee icon on the home screen opens **Buy me a coffee**: **A coffee** ($3),
+**A lunch** ($10), or any amount from $1 to $10,000. Each opens
+`https://paypal.me/Meshkati/<amount>USD` in the browser, where PayPal asks to confirm
+the payment. The app makes no request itself and stores nothing about it.
+
 ### Updates
 
 The app is not on Google Play; new versions are on the
@@ -352,7 +359,7 @@ learn the user's real IP and that they use this app.
 * `./gradlew :app:testDebugUnitTest` runs the app's JVM unit tests: the profile and
   `vless://` summaries the UI shows, the mapping from OpenVPN events and errors
   to status text, the choice between the two routes, the version comparison and
-  timing of the update check, and the crash report (reading a tombstone, hiding
+  timing of the update check, the donation amounts, and the crash report (reading a tombstone, hiding
   servers and addresses, cutting the GitHub link to size).
 * `sudo hosttest/run-e2e.sh` (Linux, needs `openvpn dnsmasq openssl python3 go cmake ninja`)
   runs the full chain on a PC. It starts an OpenVPN 2.6 server (user/pass + tls-crypt),

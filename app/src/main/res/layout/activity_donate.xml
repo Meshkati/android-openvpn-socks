@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    style="@style/Screen"
+    android:focusable="true"
+    android:focusableInTouchMode="true">
+
+    <LinearLayout style="@style/AppBar">
+
+        <ImageButton
+            android:id="@+id/back"
+            style="@style/IconButton"
+            android:contentDescription="@string/back"
+            android:src="@drawable/ic_arrow_back" />
+
+        <TextView
+            style="@style/AppBarTitle"
+            android:layout_marginStart="4dp"
+            android:text="@string/donate_title" />
+    </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout style="@style/Content">
+
+            <ImageView
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="8dp"
+                android:importantForAccessibility="no"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_coffee"
+                android:tint="@color/accent" />
+
+            <TextView
+                style="@style/Text"
+                android:layout_width="match_parent"
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:text="@string/donate_intro"
+                android:textSize="15sp" />
+
+            <Button
+                android:id="@+id/donate_coffee"
+                style="@style/Button.Tone"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="24dp" />
+
+            <Button
+                android:id="@+id/donate_lunch"
+                style="@style/Button.Tone"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="10dp" />
+
+            <TextView
+                style="@style/Text.Label"
+                android:layout_marginTop="24dp"
+                android:labelFor="@+id/donate_amount"
+                android:text="@string/donate_custom_label" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <EditText
+                    android:id="@+id/donate_amount"
+                    style="@style/Field"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:hint="@string/donate_custom_hint"
+                    android:imeOptions="actionGo"
+                    android:importantForAutofill="no"
+                    android:inputType="numberDecimal"
+                    android:maxLength="9"
+                    android:saveEnabled="false" />
+
+                <Button
+                    android:id="@+id/donate_custom"
+                    style="@style/Button.Line"
+                    android:layout_height="50dp"
+                    android:layout_marginStart="10dp"
+                    android:text="@string/donate_custom_button" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/donate_amount_help"
+                style="@style/Text.Help"
+                android:text="@string/donate_custom_help" />
+
+            <TextView
+                style="@style/Text.Help"
+                android:layout_marginTop="24dp"
+                android:text="@string/donate_privacy" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>
