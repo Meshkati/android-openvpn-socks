@@ -267,6 +267,13 @@ plain words, and your route: OpenVPN, then VLESS. Tap a step of the route to set
    The VLESS host may be a name that only resolves inside the OpenVPN network. It is
    resolved with the DNS servers OpenVPN pushes. The screen shows what it read from the
    link (server, port, transport, security) so you can check it.
+   A TLS link with `fp=randomized` or `fp=randomizednoalpn` gets a warning, here and on
+   the home screen, with a button that changes it to `fp=chrome`. Those fingerprints can
+   offer post-quantum TLS (X25519MLKEM768) without sending a key for it. A server that
+   wants it, like Cloudflare's, then asks again, which uTLS can't answer: every
+   connection fails with `tls: CurvePreferences includes unsupported curve`. Xray picks
+   the random fingerprint once per app run, so this comes and goes. **Keep** hides the
+   home-screen warning until the link changes.
    Once a VLESS server is saved, its row on the home screen has a **Use VLESS** switch.
    Turn it off to connect with OpenVPN only and keep the VLESS setting for later. The
    switch can be changed while disconnected, and the caption above the route says

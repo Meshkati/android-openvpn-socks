@@ -23,6 +23,8 @@ class VlessActivity : Activity() {
     private lateinit var summaryCaption: TextView
     private lateinit var summaryRows: LinearLayout
     private lateinit var help: TextView
+    private lateinit var fpBox: View
+    private lateinit var fpText: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,6 +38,8 @@ class VlessActivity : Activity() {
         summaryCaption = findViewById(R.id.summary_caption)
         summaryRows = findViewById(R.id.summary_rows)
         help = findViewById(R.id.vless_help)
+        fpBox = findViewById(R.id.fp_box)
+        fpText = findViewById(R.id.fp_text)
 
         vless.setText(settings.vless)
         vless.addTextChangedListener(object : TextWatcher {
@@ -45,6 +49,7 @@ class VlessActivity : Activity() {
         })
         findViewById<View>(R.id.back).setOnClickListener { finish() }
         findViewById<View>(R.id.paste).setOnClickListener { paste() }
+        findViewById<View>(R.id.fp_fix).setOnClickListener { useSafeFingerprint() }
         render()
     }
 
@@ -64,8 +69,20 @@ class VlessActivity : Activity() {
         vless.setSelection(vless.length())
     }
 
+    /** Rewrites the link's fp=, which [render] then stops warning about. Saved in [onPause]. */
+    private fun useSafeFingerprint() {
+        vless.setText(Fingerprint.fix(vless.text.toString()))
+        vless.setSelection(vless.length())
+        val running = VpnState.phase != VpnState.Phase.DISCONNECTED
+        Toast.makeText(this, if (running) R.string.fp_switched_reconnect else R.string.fp_switched,
+            Toast.LENGTH_SHORT).show()
+    }
+
     private fun render() {
         val config = VlessConfig.parse(vless.text.toString())
+        val fp = Fingerprint.risky(vless.text.toString())
+        fpBox.visibility = if (fp != null) View.VISIBLE else View.GONE
+        if (fp != null) fpText.text = getString(R.string.fp_warning_help, fp)
         error.visibility = if (config == VlessConfig.Invalid) View.VISIBLE else View.GONE
         summaryRows.removeAllViews()
         when (config) {

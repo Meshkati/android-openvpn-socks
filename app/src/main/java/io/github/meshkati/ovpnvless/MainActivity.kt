@@ -60,6 +60,8 @@ class MainActivity : Activity() {
     private lateinit var updateText: TextView
     private lateinit var crashBox: View
     private lateinit var crashText: TextView
+    private lateinit var fpBox: View
+    private lateinit var fpText: TextView
 
     private var profile: ProfileInfo? = null
     private var vless: VlessConfig? = null
@@ -103,6 +105,8 @@ class MainActivity : Activity() {
         updateText = findViewById(R.id.update_text)
         crashBox = findViewById(R.id.crash_box)
         crashText = findViewById(R.id.crash_text)
+        fpBox = findViewById(R.id.fp_box)
+        fpText = findViewById(R.id.fp_text)
 
         toggle.setOnClickListener { onToggle() }
         checkIp.setOnClickListener { IpCheck.start() }
@@ -135,6 +139,12 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.crash_dismiss).setOnClickListener {
             Crashes.clear(this)
             showCrash()
+        }
+
+        findViewById<View>(R.id.fp_fix).setOnClickListener { useSafeFingerprint() }
+        findViewById<View>(R.id.fp_keep).setOnClickListener {
+            settings.keptFingerprint = settings.vless
+            render()
         }
 
         otp.setOnEditorActionListener { _, actionId, _ ->
@@ -330,6 +340,16 @@ class MainActivity : Activity() {
         showCrash()
     }
 
+    /** Rewrites the saved link's fp= ([Fingerprint]). A running session keeps the old one until reconnected. */
+    private fun useSafeFingerprint() {
+        settings.vless = Fingerprint.fix(settings.vless)
+        vless = VlessConfig.parse(settings.vless)
+        val running = VpnState.phase != VpnState.Phase.DISCONNECTED
+        Toast.makeText(this, if (running) R.string.fp_switched_reconnect else R.string.fp_switched,
+            Toast.LENGTH_LONG).show()
+        render()
+    }
+
     private fun showOtpError(show: Boolean) {
         otp.setBackgroundResource(if (show) R.drawable.bg_field_error else R.drawable.bg_field)
         otpHelp.setText(if (show) R.string.otp_missing else R.string.otp_help)
@@ -394,6 +414,15 @@ class MainActivity : Activity() {
         )
         bindOpenVpn(profile, failure)
         bindVless(vless, failure, route)
+
+        // Randomized TLS fingerprint in the VLESS link, unless the user kept it
+        val fp = if (route == Route.VIA_VLESS && settings.vless != settings.keptFingerprint) {
+            Fingerprint.risky(settings.vless)
+        } else {
+            null
+        }
+        fpBox.visibility = if (fp != null) View.VISIBLE else View.GONE
+        if (fp != null) fpText.text = getString(R.string.fp_warning_help, fp)
 
         // Authenticator code and connected note
         otpBox.visibility =

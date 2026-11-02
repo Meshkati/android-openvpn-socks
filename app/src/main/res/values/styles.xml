@@ -235,6 +235,10 @@
         <item name="android:background">@drawable/bg_notice_info</item>
     </style>
 
+    <style name="Notice.Warn">
+        <item name="android:background">@drawable/bg_notice_warn</item>
+    </style>
+
     <style name="Notice.Error">
         <item name="android:background">@drawable/bg_notice_err</item>
     </style>
