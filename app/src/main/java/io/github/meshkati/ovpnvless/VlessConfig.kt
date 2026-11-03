@@ -44,6 +44,10 @@ sealed interface VlessConfig {
             "socks" to SOCKS, "socks5" to SOCKS, "socks5h" to SOCKS, "http" to HTTP, "https" to HTTP,
         )
 
+        /** Whether [text] is a socks4:// or socks4a:// link, which Xray-core can't use. */
+        fun isSocks4(text: String): Boolean =
+            text.trim().substringBefore("://", "").lowercase() in setOf("socks4", "socks4a")
+
         /** Returns null for blank text. */
         fun parse(text: String): VlessConfig? {
             val s = text.trim()
@@ -52,7 +56,8 @@ sealed interface VlessConfig {
             val scheme = s.substringBefore("://", "").lowercase()
             if (scheme != "vless" && scheme !in PROXIES) return Invalid
 
-            var rest = s.substring(scheme.length + "://".length)
+            val link = if (scheme in PROXIES) standardProxyLink(s) else s
+            var rest = link.substring(scheme.length + "://".length)
             val name = decode(rest.substringAfter('#', "")).ifEmpty { null }
             rest = rest.substringBefore('#')
             val query = rest.substringAfter('?', "")
@@ -62,18 +67,7 @@ sealed interface VlessConfig {
             // A VLESS link needs its UUID; a proxy's credentials are optional.
             if (scheme == "vless" && at <= 0) return Invalid
             val userInfo = if (at > 0) rest.substring(0, at) else ""
-            val hostPort = rest.substring(at + 1)
-            val host: String
-            val portText: String
-            if (hostPort.startsWith("[")) {
-                host = hostPort.substringAfter('[').substringBefore(']')
-                portText = hostPort.substringAfter("]:", "")
-            } else {
-                host = hostPort.substringBeforeLast(':')
-                portText = hostPort.substringAfterLast(':', "")
-            }
-            val port = portText.toIntOrNull()
-            if (host.isEmpty() || port == null || port !in 1..65535) return Invalid
+            val (host, port) = server(rest.substring(at + 1)) ?: return Invalid
 
             val params = query.split('&').filter { it.isNotEmpty() }.associate {
                 decode(it.substringBefore('=')) to decode(it.substringAfter('=', ""))
@@ -125,6 +119,47 @@ sealed interface VlessConfig {
                 sni = (params["sni"] ?: params["serverName"])?.ifEmpty { null },
                 name = name,
             )
+        }
+
+        /**
+         * [link] with "scheme://host:port@user:pass", as some proxy sellers
+         * write it, turned into the standard "scheme://user:pass@host:port".
+         * Other text comes back unchanged. Like the engine's standardProxyLink:
+         * "a:1@b:2" is taken as reversed only when "a" looks like a server (an
+         * IP address, a name with a dot, or localhost) and "b" doesn't.
+         */
+        fun standardProxyLink(link: String): String {
+            val schemeEnd = link.indexOf("://")
+            if (schemeEnd < 0) return link
+            val rest = link.substring(schemeEnd + 3)
+            val end = rest.indexOfAny(charArrayOf('/', '?', '#')).let { if (it < 0) rest.length else it }
+            val authority = rest.substring(0, end)
+            if ('@' !in authority) return link
+            val server = authority.substringBefore('@')
+            if (!looksLikeServer(server) || looksLikeServer(authority.substringAfterLast('@'))) return link
+            return link.substring(0, schemeEnd + 3) + authority.substringAfter('@') + "@" + server + rest.substring(end)
+        }
+
+        /** "host:port" or "[v6]:port" split, or null without a valid port. */
+        private fun server(hostPort: String): Pair<String, Int>? {
+            val host: String
+            val portText: String
+            if (hostPort.startsWith("[")) {
+                host = hostPort.substringAfter('[').substringBefore(']')
+                portText = hostPort.substringAfter("]:", "")
+            } else {
+                host = hostPort.substringBeforeLast(':')
+                portText = hostPort.substringAfterLast(':', "")
+            }
+            val port = portText.toIntOrNull()
+            if (host.isEmpty() || port == null || port !in 1..65535) return null
+            return host to port
+        }
+
+        private fun looksLikeServer(hostPort: String): Boolean {
+            val host = server(hostPort)?.first ?: return false
+            // An IPv4 address or a name with a dot, an IPv6 address, or localhost.
+            return '.' in host || ':' in host || host.equals("localhost", ignoreCase = true)
         }
 
         /**

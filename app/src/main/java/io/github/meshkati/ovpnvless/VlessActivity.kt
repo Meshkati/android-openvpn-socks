@@ -85,6 +85,7 @@ class VlessActivity : Activity() {
         fpBox.visibility = if (fp != null) View.VISIBLE else View.GONE
         if (fp != null) fpText.text = getString(R.string.fp_warning_help, fp)
         error.visibility = if (config == VlessConfig.Invalid) View.VISIBLE else View.GONE
+        error.setText(if (VlessConfig.isSocks4(vless.text.toString())) R.string.vless_socks4 else R.string.vless_invalid)
         summaryRows.removeAllViews()
         when (config) {
             is VlessConfig.Link -> {

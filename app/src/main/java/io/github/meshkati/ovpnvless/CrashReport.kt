@@ -83,7 +83,8 @@ object CrashReport {
             out += link.host
             link.user?.let { out += it }
         }
-        Regex("""(?:vless|socks5?h?|https?)://([^@\s/]+)@""", RegexOption.IGNORE_CASE).find(vless)?.let {
+        val link = VlessConfig.standardProxyLink(vless.trim())
+        Regex("""(?:vless|socks5?h?|https?)://([^@\s/]+)@""", RegexOption.IGNORE_CASE).find(link)?.let {
             val userInfo = it.groupValues[1]
             out += userInfo
             // A proxy's "user:pass": the password on its own too.

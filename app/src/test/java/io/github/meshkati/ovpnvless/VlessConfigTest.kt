@@ -1,7 +1,9 @@
 package io.github.meshkati.ovpnvless
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class VlessConfigTest {
@@ -182,5 +184,50 @@ class VlessConfigTest {
         val config = VlessConfig.parse("vless://id@edge.example.net:80") as VlessConfig.Link
         assertEquals(VlessConfig.VLESS, config.protocol)
         assertNull(config.user)
+    }
+
+    @Test
+    fun proxyWithCredentialsLastIsRead() {
+        // given: some proxy sellers write host:port@user:password
+        val link = "http://203.0.113.5:8080@alex:secret#Seller"
+
+        // when
+        val config = VlessConfig.parse(link) as VlessConfig.Link
+
+        // then
+        assertEquals("203.0.113.5", config.host)
+        assertEquals(8080, config.port)
+        assertEquals("alex", config.user)
+        assertEquals("Seller", config.name)
+    }
+
+    @Test
+    fun credentialsLastAreMovedFirst() {
+        assertEquals(
+            "socks5://u:1234@proxy.example.com:1080",
+            VlessConfig.standardProxyLink("socks5://proxy.example.com:1080@u:1234"),
+        )
+    }
+
+    @Test
+    fun standardProxyLinkIsLeftAlone() {
+        // "squid" doesn't look like a server, so this is user "admin", password "1234".
+        val link = "http://admin:1234@squid:3128"
+
+        assertEquals(link, VlessConfig.standardProxyLink(link))
+    }
+
+    @Test
+    fun socks4IsInvalidAndRecognised() {
+        // given
+        val link = "SOCKS4://proxy.example.net:1080"
+
+        // when
+        val config = VlessConfig.parse(link)
+
+        // then
+        assertEquals(VlessConfig.Invalid, config)
+        assertTrue(VlessConfig.isSocks4(link))
+        assertFalse(VlessConfig.isSocks4("socks5://proxy.example.net:1080"))
     }
 }
