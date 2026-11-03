@@ -209,6 +209,8 @@ func TestTrafficThroughSocksAndHTTPProxies(t *testing.T) {
 		{"socks5://alice:s3cret@" + socksAddr + "#test", socksUsed},
 		{"socks://" + creds + "@" + socksAddr, socksUsed},
 		{"http://bob:p%40ss@" + httpAddr, httpUsed},
+		{"http://" + httpAddr + "@bob:p@ss", httpUsed},
+		{"socks5://" + socksAddr + "@alice:s3cret", socksUsed},
 	} {
 		t.Run(tc.link, func(t *testing.T) {
 			before := tc.used.Load()

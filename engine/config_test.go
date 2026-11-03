@@ -78,6 +78,37 @@ func TestSocksOutboundFields(t *testing.T) {
 	}
 }
 
+func TestReversedProxyCredentials(t *testing.T) {
+	for link, want := range map[string]string{
+		// Credentials last, as some proxy sellers write them.
+		"http://1.2.3.4:8080@user:pass":          "http://user:pass@1.2.3.4:8080",
+		"socks5://proxy.example.com:1080@u:1234": "socks5://u:1234@proxy.example.com:1080",
+		"http://[fd00::1]:3128@u:p@ss#name":      "http://u:p@ss@[fd00::1]:3128#name",
+		"http://localhost:8080@u:p?x=1":          "http://u:p@localhost:8080?x=1",
+		// Already standard, or neither: unchanged.
+		"http://user:pass@1.2.3.4:8080":    "http://user:pass@1.2.3.4:8080",
+		"http://admin:1234@squid:3128":     "http://admin:1234@squid:3128",
+		"http://a.example:1@b.example:2":   "http://a.example:1@b.example:2",
+		"http://1.2.3.4:8080":              "http://1.2.3.4:8080",
+		"socks://dXNlcjpwYXNz@h.example:1": "socks://dXNlcjpwYXNz@h.example:1",
+	} {
+		if got := standardProxyLink(link); got != want {
+			t.Errorf("standardProxyLink(%q) = %q, want %q", link, got, want)
+		}
+	}
+
+	ob, err := proxyOutbound("http://1.2.3.4:8080@user:pass")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := json.Marshal(ob)
+	for _, w := range []string{`"address":"1.2.3.4"`, `"port":8080`, `"user":"user"`, `"pass":"pass"`} {
+		if !strings.Contains(string(b), w) {
+			t.Errorf("missing %s in %s", w, b)
+		}
+	}
+}
+
 func TestDNSGoesOverHTTPSOnlyForSocksAndHTTP(t *testing.T) {
 	for link, want := range map[string]bool{
 		"vless://id@10.8.0.1:80": false,
