@@ -72,14 +72,23 @@ object CrashReport {
 
     /**
      * What to hide: the OpenVPN servers (every `remote`), the VLESS server and
-     * its UUID, server addresses in a VLESS JSON config, and the username.
+     * its UUID, a SOCKS or HTTP proxy and its username and password, server
+     * addresses in a VLESS JSON config, and the username.
      * Short values are left alone: they would match ordinary words.
      */
     fun secrets(profile: String, vless: String, username: String): List<String> {
         val out = mutableListOf<String>()
         Regex("""^\s*remote\s+(\S+)""", RegexOption.MULTILINE).findAll(profile).forEach { out += it.groupValues[1] }
-        (VlessConfig.parse(vless) as? VlessConfig.Link)?.let { out += it.host }
-        Regex("""vless://([^@\s]+)@""", RegexOption.IGNORE_CASE).find(vless)?.let { out += it.groupValues[1] }
+        (VlessConfig.parse(vless) as? VlessConfig.Link)?.let { link ->
+            out += link.host
+            link.user?.let { out += it }
+        }
+        Regex("""(?:vless|socks5?h?|https?)://([^@\s/]+)@""", RegexOption.IGNORE_CASE).find(vless)?.let {
+            val userInfo = it.groupValues[1]
+            out += userInfo
+            // A proxy's "user:pass": the password on its own too.
+            if (':' in userInfo) out += userInfo.substringAfter(':')
+        }
         Regex(""""(?:address|serverName)"\s*:\s*"([^"]+)"""").findAll(vless).forEach { out += it.groupValues[1] }
         out += username.trim()
         return out.filter { it.length >= 4 }.distinct().sortedByDescending { it.length }

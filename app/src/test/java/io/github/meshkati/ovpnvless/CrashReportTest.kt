@@ -96,6 +96,15 @@ class CrashReportTest {
     }
 
     @Test
+    fun secretsOfAProxyLink() {
+        val secrets = CrashReport.secrets("", "socks5://alex.smith:hunter22@proxy.example.org:1080#office", "")
+        assertEquals(
+            setOf("proxy.example.org", "alex.smith", "alex.smith:hunter22", "hunter22"),
+            secrets.toSet(),
+        )
+    }
+
+    @Test
     fun secretsFromAVlessJsonConfig() {
         val json = """{"outbounds":[{"settings":{"vnext":[{"address": "203.0.113.9"}]},
             "streamSettings":{"tlsSettings":{"serverName":"cdn.example.com"}}}]}"""

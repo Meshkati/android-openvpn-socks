@@ -13,7 +13,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 
-/** VLESS server: a profile's share link or Xray JSON, with a read-only summary. */
+/** VLESS server: a profile's VLESS, SOCKS or HTTP proxy link or Xray JSON, with a read-only summary. */
 class VlessActivity : Activity() {
 
     private lateinit var profile: Profile
@@ -88,16 +88,23 @@ class VlessActivity : Activity() {
         summaryRows.removeAllViews()
         when (config) {
             is VlessConfig.Link -> {
+                val proxy = config.protocol != VlessConfig.VLESS
                 summaryCaption.setText(R.string.vless_from_link)
+                addRow(R.string.row_protocol, config.protocol)
                 addRow(R.string.row_server, config.host)
                 addRow(R.string.row_port, config.port.toString())
-                addRow(R.string.row_transport, listOfNotNull(config.transport, config.path).joinToString(" · "))
+                if (!proxy) addRow(R.string.row_transport, listOfNotNull(config.transport, config.path).joinToString(" · "))
                 addRow(R.string.row_security, config.security)
                 config.flow?.let { addRow(R.string.row_flow, it) }
                 config.sni?.let { addRow(R.string.row_sni, it) }
+                config.user?.let { addRow(R.string.row_user, it) }
                 config.name?.let { addRow(R.string.row_name, it) }
                 summary.visibility = View.VISIBLE
-                help.setText(R.string.vless_help)
+                help.text = if (proxy) {
+                    getString(R.string.vless_help) + "\n\n" + getString(R.string.vless_proxy_help)
+                } else {
+                    getString(R.string.vless_help)
+                }
             }
             VlessConfig.Json -> {
                 summaryCaption.setText(R.string.vless_custom)

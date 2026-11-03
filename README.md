@@ -85,7 +85,9 @@ captures is sent to the VLESS server.
 * **All IPv4 traffic from other apps.** The TUN routes `0.0.0.0/0`, and Xray's only
   outbound is the VLESS server, with no routing rules. Nothing goes out directly.
 * **Apps' DNS.** Apps are given `1.1.1.1` as their DNS server, and those queries go
-  over VLESS like any other traffic.
+  over VLESS like any other traffic. With a SOCKS or HTTP proxy in place of VLESS, they
+  are asked of `1.1.1.1` over HTTPS through the proxy instead (see step 3 of
+  [Using the app](#using-the-app)).
 * **Not IPv6.** The TUN has no IPv6 address or route, so Android blocks IPv6 while the
   VPN is up and apps fall back to IPv4.
 * **Not this app's own traffic.** The app excludes itself
@@ -169,7 +171,7 @@ app/                      Android app (Kotlin, no AndroidX)
                           home-screen widgets (Widgets, WidgetState)
   src/test/               JVM unit tests for the config/link summaries, status text and profiles
 design/                   UI sketches and screenshots
-engine/                   Go: Xray-core + gVisor stack, gomobile API, vless:// parser
+engine/                   Go: Xray-core + gVisor stack, gomobile API, vless:// / proxy link parser
 scripts/build-engine.sh   gomobile bind → app/libs/engine.aar
 hosttest/                 Linux end-to-end tests of both routes (no Android needed)
 ```
@@ -281,6 +283,17 @@ the route to set it up for that profile; tap the profile to switch (see [Profile
 3. **VLESS server** (optional): paste a share link, for example
    `vless://UUID@host:443?security=reality&sni=…&pbk=…&sid=…&fp=chrome&type=tcp&flow=xtls-rprx-vision`.
    Supported: `type=tcp|ws|grpc|httpupgrade|xhttp`, `security=none|tls|reality`.
+   A plain **SOCKS5 or HTTP proxy** works too, through Xray's own `socks` and `http`
+   outbounds: `socks5://user:pass@host:1080`, `http://user:pass@host:8080`, or
+   `https://user:pass@host:443` for an HTTP proxy spoken over TLS (`sni=` and `fp=`
+   are read). `socks://` and `socks5h://` are taken as SOCKS5, and the v2rayN/v2rayNG
+   form with base64 credentials (`socks://dXNlcjpwYXNz@host:1080`) works. Credentials
+   are optional. With a proxy, apps' DNS is answered by Xray's DNS, which asks
+   `https://1.1.1.1/dns-query` over TCP through the proxy, since an HTTP proxy can't
+   carry UDP and many SOCKS proxies don't. A and AAAA queries are answered; other
+   types get an empty answer. An HTTP proxy carries TCP only, so other UDP fails
+   (apps fall back from QUIC to TCP); a SOCKS proxy carries it if the server supports
+   UDP ASSOCIATE.
    You can also paste a full Xray JSON config instead; it must contain a `tun` inbound.
    The VLESS host may be a name that only resolves inside the OpenVPN network. It is
    resolved with the DNS servers OpenVPN pushes. The screen shows what it read from the
@@ -461,12 +474,14 @@ learn the user's real IP and that they use this app.
 ## Testing
 
 * `cd engine && go test ./...` checks that Xray-core accepts every config the
-  `vless://` parser produces, and runs the IP check through a real Xray instance
-  against a local HTTPS server (answer, log, bad answers, untrusted certificate).
+  `vless://`, `socks://` and `http(s)://` parsers produce, and runs the IP check through a
+  real Xray instance against a local HTTPS server (answer, log, bad answers, untrusted
+  certificate), also through local SOCKS5 and HTTP proxies with a password, and that apps'
+  DNS reaches the DoH server through the proxy.
   It also checks that a Go panic lands in the crash file. The engine builds on Linux
   only (gVisor).
 * `./gradlew :app:testDebugUnitTest` runs the app's JVM unit tests: the OpenVPN config and
-  `vless://` summaries the UI shows, the profile list (order, delete and undo, which profile
+  `vless://`, `socks://` and `http(s)://` summaries the UI shows, the profile list (order, delete and undo, which profile
   is in use) and profile names, the mapping from OpenVPN events and errors
   to status text, the choice between the two routes, how the IP check goes in each state and
   what counts as an IP in its answer, what the widgets show in each state, the version comparison and
