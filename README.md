@@ -290,7 +290,10 @@ the route to set it up for that profile; tap the profile to switch (see [Profile
    form with base64 credentials (`socks://dXNlcjpwYXNz@host:1080`) works, and so does
    the credentials-last form some proxy sellers use (`http://host:8080@user:pass`).
    That form is recognised when the part before `@` looks like a server (an IP address,
-   a name with a dot, or `localhost`) and the part after doesn't. Credentials are optional. With a proxy, apps' DNS is answered by Xray's DNS, which asks
+   a name with a dot, or `localhost`) and the part after doesn't. Credentials are optional.
+   SOCKS4 (`socks4://`, `socks4a://`) isn't supported: Xray-core's SOCKS client only
+   speaks SOCKS5. A password with `/`, `?` or `#` in it must be
+   percent-encoded (`%2F`, `%3F`, `%23`); `@` and `:` work as they are. With a proxy, apps' DNS is answered by Xray's DNS, which asks
    `https://1.1.1.1/dns-query` over TCP through the proxy, since an HTTP proxy can't
    carry UDP and many SOCKS proxies don't. A and AAAA queries are answered; other
    types get an empty answer. An HTTP proxy carries TCP only, so other UDP fails
