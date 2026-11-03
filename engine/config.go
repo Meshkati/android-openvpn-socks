@@ -78,6 +78,9 @@ func proxyOutbound(link string) (map[string]any, error) {
 		return vlessOutbound(link)
 	case "socks", "socks5", "socks5h", "http", "https":
 		return socksOrHTTPOutbound(link)
+	case "socks4", "socks4a":
+		// Xray-core speaks SOCKS4 only as a server, not as a client.
+		return nil, errors.New("SOCKS4 proxies aren't supported, only SOCKS5 and HTTP")
 	}
 	return nil, errors.New(`link must start with "vless://", "socks://" or "http://"`)
 }

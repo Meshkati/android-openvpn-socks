@@ -44,6 +44,10 @@ sealed interface VlessConfig {
             "socks" to SOCKS, "socks5" to SOCKS, "socks5h" to SOCKS, "http" to HTTP, "https" to HTTP,
         )
 
+        /** Whether [text] is a socks4:// or socks4a:// link, which Xray-core can't use. */
+        fun isSocks4(text: String): Boolean =
+            text.trim().substringBefore("://", "").lowercase() in setOf("socks4", "socks4a")
+
         /** Returns null for blank text. */
         fun parse(text: String): VlessConfig? {
             val s = text.trim()

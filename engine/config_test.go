@@ -133,7 +133,7 @@ func TestDNSGoesOverHTTPSOnlyForSocksAndHTTP(t *testing.T) {
 
 func TestBadLinks(t *testing.T) {
 	for _, link := range []string{"", "vmess://x@h:1", "vless://h:1", "vless://id@h", "vless://id@h:1?type=kcp", "vless://id@h:1?security=xtls",
-		"socks5://h", "socks5://:1080", "http://h:0", "https://h", "ftp://h:21", "trojan://pw@h:443"} {
+		"socks5://h", "socks5://:1080", "http://h:0", "https://h", "ftp://h:21", "trojan://pw@h:443", "socks4://h:1080", "socks4a://h:1080"} {
 		if _, err := proxyOutbound(link); err == nil {
 			t.Errorf("expected error for %q", link)
 		}
