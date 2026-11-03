@@ -183,4 +183,35 @@ class VlessConfigTest {
         assertEquals(VlessConfig.VLESS, config.protocol)
         assertNull(config.user)
     }
+
+    @Test
+    fun proxyWithCredentialsLastIsRead() {
+        // given: some proxy sellers write host:port@user:password
+        val link = "http://203.0.113.5:8080@alex:secret#Seller"
+
+        // when
+        val config = VlessConfig.parse(link) as VlessConfig.Link
+
+        // then
+        assertEquals("203.0.113.5", config.host)
+        assertEquals(8080, config.port)
+        assertEquals("alex", config.user)
+        assertEquals("Seller", config.name)
+    }
+
+    @Test
+    fun credentialsLastAreMovedFirst() {
+        assertEquals(
+            "socks5://u:1234@proxy.example.com:1080",
+            VlessConfig.standardProxyLink("socks5://proxy.example.com:1080@u:1234"),
+        )
+    }
+
+    @Test
+    fun standardProxyLinkIsLeftAlone() {
+        // "squid" doesn't look like a server, so this is user "admin", password "1234".
+        val link = "http://admin:1234@squid:3128"
+
+        assertEquals(link, VlessConfig.standardProxyLink(link))
+    }
 }

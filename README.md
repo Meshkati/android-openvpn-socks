@@ -287,8 +287,10 @@ the route to set it up for that profile; tap the profile to switch (see [Profile
    outbounds: `socks5://user:pass@host:1080`, `http://user:pass@host:8080`, or
    `https://user:pass@host:443` for an HTTP proxy spoken over TLS (`sni=` and `fp=`
    are read). `socks://` and `socks5h://` are taken as SOCKS5, and the v2rayN/v2rayNG
-   form with base64 credentials (`socks://dXNlcjpwYXNz@host:1080`) works. Credentials
-   are optional. With a proxy, apps' DNS is answered by Xray's DNS, which asks
+   form with base64 credentials (`socks://dXNlcjpwYXNz@host:1080`) works, and so does
+   the credentials-last form some proxy sellers use (`http://host:8080@user:pass`).
+   That form is recognised when the part before `@` looks like a server (an IP address,
+   a name with a dot, or `localhost`) and the part after doesn't. Credentials are optional. With a proxy, apps' DNS is answered by Xray's DNS, which asks
    `https://1.1.1.1/dns-query` over TCP through the proxy, since an HTTP proxy can't
    carry UDP and many SOCKS proxies don't. A and AAAA queries are answered; other
    types get an empty answer. An HTTP proxy carries TCP only, so other UDP fails

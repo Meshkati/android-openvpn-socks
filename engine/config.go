@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"strconv"
 	"strings"
@@ -88,9 +89,10 @@ func proxyOutbound(link string) (map[string]any, error) {
 //	https://host:443?sni=proxy.example.com   (HTTP proxy spoken over TLS)
 //
 // v2rayN and v2rayNG share these with the credentials base64-encoded:
-// socks://dXNlcjpwYXNz@host:1080. Both forms are accepted.
+// socks://dXNlcjpwYXNz@host:1080. Some proxy sellers put the credentials
+// last: http://host:8080@user:pass. All three forms are accepted.
 func socksOrHTTPOutbound(link string) (map[string]any, error) {
-	u, err := url.Parse(link)
+	u, err := url.Parse(standardProxyLink(link))
 	if err != nil {
 		return nil, fmt.Errorf("bad proxy link: %w", err)
 	}
@@ -132,6 +134,47 @@ func socksOrHTTPOutbound(link string) (map[string]any, error) {
 		out["streamSettings"] = map[string]any{"network": "tcp", "security": "tls", "tlsSettings": tls}
 	}
 	return out, nil
+}
+
+// standardProxyLink rewrites "scheme://host:port@user:pass" to the standard
+// "scheme://user:pass@host:port". A link already in the standard form is
+// returned unchanged, so is one that is neither.
+//
+// "a:1@b:2" reads both ways. It is taken as reversed only when "a" looks
+// like a server (an IP address, or a name with a dot, or localhost) and "b"
+// doesn't, as in "1.2.3.4:8080@user:1234".
+func standardProxyLink(link string) string {
+	scheme, rest, ok := strings.Cut(link, "://")
+	if !ok {
+		return link
+	}
+	end := strings.IndexAny(rest, "/?#")
+	if end < 0 {
+		end = len(rest)
+	}
+	authority, tail := rest[:end], rest[end:]
+	server, credentials, ok := strings.Cut(authority, "@")
+	if !ok || !looksLikeServer(server) {
+		return link
+	}
+	standardServer := authority[strings.LastIndex(authority, "@")+1:]
+	if looksLikeServer(standardServer) {
+		return link
+	}
+	return scheme + "://" + credentials + "@" + server + tail
+}
+
+// looksLikeServer reports whether hostPort is "host:port" with a valid port
+// and a host that is an IP address, a name with a dot, or localhost.
+func looksLikeServer(hostPort string) bool {
+	host, portText, err := net.SplitHostPort(hostPort)
+	if err != nil {
+		return false
+	}
+	if port, err := strconv.ParseUint(portText, 10, 16); err != nil || port == 0 {
+		return false
+	}
+	return net.ParseIP(host) != nil || strings.Contains(host, ".") || strings.EqualFold(host, "localhost")
 }
 
 // base64Credentials decodes v2rayN's base64 "user:pass" userinfo.
