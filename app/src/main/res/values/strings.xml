@@ -44,7 +44,7 @@
     <string name="add_openvpn_meta">Import a .ovpn file</string>
     <string name="add_vless">Add VLESS server</string>
     <string name="add_vless_label">Optional</string>
-    <string name="add_vless_meta">Paste a vless:// link</string>
+    <string name="add_vless_meta">Paste a vless://, socks:// or http:// link</string>
     <string name="hop_connecting">Connecting…</string>
     <string name="hop_reconnecting">Reconnecting…</string>
     <string name="hop_waiting">Waiting for OpenVPN</string>
@@ -192,18 +192,20 @@
 
     <!-- VLESS screen -->
     <string name="vless_title">VLESS server</string>
-    <string name="vless_label">Share link or Xray JSON config</string>
-    <string name="vless_hint">vless://…</string>
+    <string name="vless_label">VLESS, SOCKS or HTTP proxy link, or Xray JSON config</string>
+    <string name="vless_hint">vless://…\nsocks5://user:pass@host:1080\nhttp://user:pass@host:8080</string>
     <string name="paste">Paste</string>
     <string name="clipboard_empty">The clipboard has no text.</string>
     <string name="vless_from_link">From this link</string>
     <string name="vless_custom">Custom Xray config</string>
     <string name="vless_custom_meta">Xray JSON</string>
     <string name="vless_custom_help">A JSON config is used as is. It must contain a tun inbound.</string>
-    <string name="vless_invalid">This doesn\'t look like a vless:// link or an Xray JSON config.</string>
+    <string name="vless_invalid">This doesn\'t look like a vless://, socks:// or http(s):// link, or an Xray JSON config.</string>
     <string name="vless_help">The server name may resolve only inside the OpenVPN network. That works: it is looked up with the DNS servers OpenVPN pushes.</string>
     <string name="vless_invalid_meta">Can\'t read this link</string>
     <string name="vless_link_name">VLESS link</string>
+    <string name="vless_proxy_help">Apps\' DNS goes to 1.1.1.1 over HTTPS through the proxy, since many proxies can\'t carry UDP. An HTTP proxy carries TCP only: apps fall back from QUIC to TCP, and UDP-only apps such as some calls won\'t work.</string>
+    <string name="row_protocol">Protocol</string>
     <string name="row_server">Server</string>
     <string name="row_port">Port</string>
     <string name="row_transport">Transport</string>
@@ -211,6 +213,7 @@
     <string name="row_flow">Flow</string>
     <string name="row_sni">SNI</string>
     <string name="row_name">Name</string>
+    <string name="row_user">Username</string>
 
     <!-- Randomized TLS fingerprint in the VLESS link (Fingerprint.kt) -->
     <string name="fp_warning_title">This link\'s TLS fingerprint can stop VLESS from working</string>

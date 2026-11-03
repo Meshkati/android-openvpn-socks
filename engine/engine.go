@@ -94,7 +94,8 @@ func SetLogger(l Logger) {
 //     to resolve the VLESS server name inside the tunnel (may be empty).
 //   - tunFd: the VpnService TUN fd read by Xray's tun inbound; the caller
 //     keeps ownership. Pass 0 when config brings its own inbound.
-//   - config: a vless:// link, or a complete Xray JSON config.
+//   - config: a vless://, socks:// or http(s):// link, or a complete Xray
+//     JSON config.
 func Start(ovpnFd int32, ovpnAddrs, ovpnDNS string, mtu int32, tunFd int32, config string) error {
 	mu.Lock()
 	defer mu.Unlock()

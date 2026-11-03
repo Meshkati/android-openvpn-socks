@@ -636,10 +636,12 @@ fun vlessName(context: Context, vless: VlessConfig): String = when (vless) {
     VlessConfig.Invalid -> context.getString(R.string.vless_link_name)
 }
 
-/** "443 · WebSocket · TLS". */
+/** "443 · WebSocket · TLS", or "1080 · SOCKS" for a proxy. */
 fun vlessSummary(context: Context, vless: VlessConfig): String = when (vless) {
     is VlessConfig.Link -> listOfNotNull(
-        vless.port.toString(), vless.transport, vless.security.takeIf { it != "None" }, vless.flow,
+        vless.port.toString(),
+        if (vless.protocol == VlessConfig.VLESS) vless.transport else vless.protocol,
+        vless.security.takeIf { it != "None" }, vless.flow,
     ).joinToString(" · ")
     VlessConfig.Json -> context.getString(R.string.vless_custom_meta)
     VlessConfig.Invalid -> context.getString(R.string.vless_invalid_meta)

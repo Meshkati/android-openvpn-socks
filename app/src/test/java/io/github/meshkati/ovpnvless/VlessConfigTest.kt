@@ -102,4 +102,85 @@ class VlessConfigTest {
         // then
         assertEquals("None", config.security)
     }
+
+    @Test
+    fun socksLinkIsSummarised() {
+        // given
+        val link = "socks5://alex:p%40ss@proxy.example.net:1080#Office"
+
+        // when
+        val config = VlessConfig.parse(link)
+
+        // then
+        val expected = VlessConfig.Link(
+            host = "proxy.example.net", port = 1080, transport = "TCP", path = null, security = "None",
+            flow = null, sni = null, name = "Office", protocol = VlessConfig.SOCKS, user = "alex",
+        )
+        assertEquals(expected, config)
+    }
+
+    @Test
+    fun v2rayNSocksLinkHasBase64Credentials() {
+        // given: base64 of "alex:secret"
+        val link = "socks://YWxleDpzZWNyZXQ=@proxy.example.net:1080"
+
+        // when
+        val config = VlessConfig.parse(link) as VlessConfig.Link
+
+        // then
+        assertEquals("alex", config.user)
+    }
+
+    @Test
+    fun proxyWithoutCredentials() {
+        // given
+        val link = "socks5h://[2001:db8::1]:1080"
+
+        // when
+        val config = VlessConfig.parse(link) as VlessConfig.Link
+
+        // then
+        assertEquals("2001:db8::1", config.host)
+        assertNull(config.user)
+    }
+
+    @Test
+    fun httpProxyLink() {
+        // given
+        val link = "HTTP://proxy.example.net:3128"
+
+        // when
+        val config = VlessConfig.parse(link) as VlessConfig.Link
+
+        // then
+        assertEquals(VlessConfig.HTTP, config.protocol)
+        assertEquals("None", config.security)
+    }
+
+    @Test
+    fun httpsProxyUsesTls() {
+        // given
+        val link = "https://u:p@proxy.example.net:443?sni=front.example.com"
+
+        // when
+        val config = VlessConfig.parse(link) as VlessConfig.Link
+
+        // then
+        assertEquals(VlessConfig.HTTP, config.protocol)
+        assertEquals("TLS", config.security)
+        assertEquals("front.example.com", config.sni)
+        assertEquals("u", config.user)
+    }
+
+    @Test
+    fun proxyWithoutPortIsInvalid() {
+        assertEquals(VlessConfig.Invalid, VlessConfig.parse("socks5://proxy.example.net"))
+    }
+
+    @Test
+    fun vlessLinkIsVless() {
+        val config = VlessConfig.parse("vless://id@edge.example.net:80") as VlessConfig.Link
+        assertEquals(VlessConfig.VLESS, config.protocol)
+        assertNull(config.user)
+    }
 }

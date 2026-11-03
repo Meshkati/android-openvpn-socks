@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,9 +10,9 @@ import (
 	"strings"
 )
 
-// BuildXrayConfig turns a vless:// share link into a complete Xray JSON
-// config: a "tun" inbound reading the Android VpnService fd, and the VLESS
-// server as the only outbound.
+// BuildXrayConfig turns a vless://, socks:// or http(s):// link into a
+// complete Xray JSON config: a "tun" inbound reading the Android VpnService
+// fd, and that server as the only outbound for apps' traffic.
 func BuildXrayConfig(link string, mtu int32) (string, error) {
 	return buildConfig(link, map[string]any{
 		"tag":      "tun-in",
@@ -26,7 +27,7 @@ func BuildXrayConfig(link string, mtu int32) (string, error) {
 }
 
 func buildConfig(link string, inbound map[string]any) (string, error) {
-	out, err := vlessOutbound(link)
+	out, err := proxyOutbound(link)
 	if err != nil {
 		return "", err
 	}
@@ -35,8 +36,113 @@ func buildConfig(link string, inbound map[string]any) (string, error) {
 		"inbounds":  []any{inbound},
 		"outbounds": []any{out},
 	}
+	if out["protocol"] != "vless" {
+		addDNSOverHTTPS(cfg, inbound["tag"])
+	}
 	b, err := json.MarshalIndent(cfg, "", "  ")
 	return string(b), err
+}
+
+// dohServer answers apps' DNS through the proxy.
+const dohServer = "https://1.1.1.1/dns-query"
+
+// addDNSOverHTTPS sends apps' DNS queries (UDP port 53, from inboundTag) to
+// Xray's DNS, which asks dohServer over TCP through the proxy, the first
+// outbound. An HTTP proxy can't carry UDP at all, and many SOCKS proxies
+// (ssh -D, for one) don't either; without this no name would resolve.
+// A and AAAA queries are answered; other types get an empty answer.
+func addDNSOverHTTPS(cfg map[string]any, inboundTag any) {
+	cfg["dns"] = map[string]any{"servers": []string{dohServer}}
+	cfg["outbounds"] = append(cfg["outbounds"].([]any), map[string]any{
+		"tag":      "dns-out",
+		"protocol": "dns",
+		"settings": map[string]any{"rules": []any{
+			map[string]any{"action": "hijack", "qType": "1,28"},
+			map[string]any{"action": "return", "rCode": 0},
+		}},
+	})
+	rule := map[string]any{"type": "field", "network": "udp", "port": 53, "outboundTag": "dns-out"}
+	if inboundTag != nil {
+		rule["inboundTag"] = []any{inboundTag}
+	}
+	cfg["routing"] = map[string]any{"rules": []any{rule}}
+}
+
+// proxyOutbound picks the outbound for link by its scheme.
+func proxyOutbound(link string) (map[string]any, error) {
+	link = strings.TrimSpace(link)
+	scheme, _, _ := strings.Cut(link, "://")
+	switch strings.ToLower(scheme) {
+	case "vless":
+		return vlessOutbound(link)
+	case "socks", "socks5", "socks5h", "http", "https":
+		return socksOrHTTPOutbound(link)
+	}
+	return nil, errors.New(`link must start with "vless://", "socks://" or "http://"`)
+}
+
+// socksOrHTTPOutbound parses a SOCKS5 or HTTP proxy URL:
+//
+//	socks5://user:pass@host:1080#name
+//	http://user:pass@host:8080
+//	https://host:443?sni=proxy.example.com   (HTTP proxy spoken over TLS)
+//
+// v2rayN and v2rayNG share these with the credentials base64-encoded:
+// socks://dXNlcjpwYXNz@host:1080. Both forms are accepted.
+func socksOrHTTPOutbound(link string) (map[string]any, error) {
+	u, err := url.Parse(link)
+	if err != nil {
+		return nil, fmt.Errorf("bad proxy link: %w", err)
+	}
+	scheme := strings.ToLower(u.Scheme)
+	protocol := "http"
+	if strings.HasPrefix(scheme, "socks") {
+		protocol = "socks"
+	}
+	host := u.Hostname()
+	port, err := strconv.ParseUint(u.Port(), 10, 16)
+	if host == "" || err != nil || port == 0 {
+		return nil, fmt.Errorf("proxy link must look like %s://host:port", scheme)
+	}
+
+	settings := map[string]any{"address": host, "port": port}
+	if u.User != nil {
+		user := u.User.Username()
+		pass, hasPass := u.User.Password()
+		if !hasPass {
+			if decoded, ok := base64Credentials(user); ok {
+				user, pass, _ = strings.Cut(decoded, ":")
+			}
+		}
+		if user != "" || pass != "" {
+			settings["user"], settings["pass"] = user, pass
+		}
+	}
+
+	out := map[string]any{"tag": "proxy", "protocol": protocol, "settings": settings}
+	if scheme == "https" {
+		q := u.Query()
+		tls := map[string]any{"serverName": host}
+		if sni := q.Get("sni"); sni != "" {
+			tls["serverName"] = sni
+		}
+		if fp := q.Get("fp"); fp != "" {
+			tls["fingerprint"] = fp
+		}
+		out["streamSettings"] = map[string]any{"network": "tcp", "security": "tls", "tlsSettings": tls}
+	}
+	return out, nil
+}
+
+// base64Credentials decodes v2rayN's base64 "user:pass" userinfo.
+func base64Credentials(s string) (string, bool) {
+	s = strings.TrimRight(s, "=")
+	for _, enc := range []*base64.Encoding{base64.RawStdEncoding, base64.RawURLEncoding} {
+		if b, err := enc.DecodeString(s); err == nil && strings.Contains(string(b), ":") {
+			return string(b), true
+		}
+	}
+	return "", false
 }
 
 // vlessOutbound parses the de-facto standard VLESS share link format
