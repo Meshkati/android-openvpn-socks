@@ -10,7 +10,8 @@ import java.io.File
 /**
  * One saved profile: a whole route under a name. The .ovpn with its sign-in
  * and, if wanted, a VLESS server. Kept in its own app-private
- * SharedPreferences file, "profile_<id>".
+ * SharedPreferences file, "profile_<id>". The fields that hold secrets are
+ * sealed with a Keystore key ([Secrets]); the name and the switch are not.
  */
 class Profile(context: Context, val id: Long) {
     private val prefs = context.getSharedPreferences(fileName(id), Context.MODE_PRIVATE)
@@ -22,21 +23,21 @@ class Profile(context: Context, val id: Long) {
 
     /** The .ovpn text. */
     var ovpn: String
-        get() = prefs.getString("ovpn", "")!!
-        set(v) = prefs.edit().putString("ovpn", v).apply()
+        get() = secret("ovpn")
+        set(v) = setSecret("ovpn", v)
 
     var username: String
-        get() = prefs.getString("username", "")!!
-        set(v) = prefs.edit().putString("username", v).apply()
+        get() = secret("username")
+        set(v) = setSecret("username", v)
 
     var password: String
-        get() = prefs.getString("password", "")!!
-        set(v) = prefs.edit().putString("password", v).apply()
+        get() = secret("password")
+        set(v) = setSecret("password", v)
 
     /** The vless:// link or Xray JSON. */
     var vless: String
-        get() = prefs.getString("vless", "")!!
-        set(v) = prefs.edit().putString("vless", v).apply()
+        get() = secret("vless")
+        set(v) = setSecret("vless", v)
 
     /** The "Use VLESS" switch. Off means OpenVPN only, even with a VLESS setting saved. */
     var useVless: Boolean
@@ -48,8 +49,8 @@ class Profile(context: Context, val id: Long) {
      * fingerprint ([Fingerprint]). The home screen warns again once it changes.
      */
     var keptFingerprint: String
-        get() = prefs.getString("kept_fingerprint", "")!!
-        set(v) = prefs.edit().putString("kept_fingerprint", v).apply()
+        get() = secret("kept_fingerprint") // a copy of the VLESS setting
+        set(v) = setSecret("kept_fingerprint", v)
 
     /** Nothing entered yet: a new profile left like this is dropped ([Profiles.discard]). */
     val isEmpty: Boolean
@@ -65,12 +66,32 @@ class Profile(context: Context, val id: Long) {
         vless: String, useVless: Boolean, keptFingerprint: String,
     ) {
         prefs.edit().clear()
-            .putString("name", name).putString("ovpn", ovpn)
-            .putString("username", username).putString("password", password)
-            .putString("vless", vless).putBoolean("use_vless", useVless)
-            .putString("kept_fingerprint", keptFingerprint)
+            .putString("name", name).putString("ovpn", seal("ovpn", ovpn))
+            .putString("username", seal("username", username)).putString("password", seal("password", password))
+            .putString("vless", seal("vless", vless)).putBoolean("use_vless", useVless)
+            .putString("kept_fingerprint", seal("kept_fingerprint", keptFingerprint))
             .commit()
     }
+
+    /** A sealed field. One saved before sealing is sealed now. */
+    private fun secret(field: String): String {
+        val stored = prefs.getString(field, "")!!
+        if (stored.isNotEmpty() && !Sealer.isSealed(stored)) {
+            prefs.edit().putString(field, seal(field, stored)).apply()
+            return stored
+        }
+        return Secrets.open(label(field), stored)
+    }
+
+    private fun setSecret(field: String, value: String) {
+        // The setup screens save on every pause; unchanged, there is nothing to seal.
+        if (value == secret(field)) return
+        prefs.edit().putString(field, seal(field, value)).apply()
+    }
+
+    private fun seal(field: String, value: String) = Secrets.seal(label(field), value)
+
+    private fun label(field: String) = "${fileName(id)}/$field"
 
     internal fun clear() {
         prefs.edit().clear().commit()

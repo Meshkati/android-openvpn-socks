@@ -27,6 +27,7 @@ class OpenVpnActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        keepOffScreenshots()
         setContentView(R.layout.activity_openvpn)
         edgeToEdge(findViewById(R.id.root))
         profile = Profiles.of(this) ?: return finish() // deleted meanwhile
