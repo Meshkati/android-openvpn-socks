@@ -466,11 +466,19 @@ What it records, in app-private files, and only for the installed version:
   logcat, registers and memory; those are skipped. For an ANR, the main thread's stack.
 
 The report adds the app version, Android version and ABI, the phone model and which
-route was set (OpenVPN only or with VLESS). Before it is shown, the OpenVPN servers
-(every `remote`), the VLESS server and UUID, server addresses in a VLESS JSON config,
-the username, and any other UUID or IPv4 address are replaced with `[server]`, `[uuid]`
-and `[ip]`. An error message can still name something unexpected, so the user sees the
-text before sending it. The app log is never included.
+route was set (OpenVPN only or with VLESS). Before it is shown, these are replaced with
+`[server]`, `[uuid]` and `[ip]`: the OpenVPN servers (every `remote`), the OpenVPN
+username and password, the VLESS server and UUID, the link's SNI, Host, path and
+REALITY keys, a proxy's credentials, server addresses and credentials in a VLESS JSON
+config, and any other UUID or IPv4 or IPv6 address. An error message can still name
+something unexpected, so the user sees the text before sending it. The app log is never
+included.
+
+The app log (the Log screen) stays in memory and is gone when the app's process ends.
+Release builds don't write it to logcat, where it would end up in bug reports, since it
+names servers, addresses and apps' destinations. Debug builds do. **Copy** marks the
+copied log as sensitive (Android 13+), so the clipboard pop-up and keyboard suggestions
+don't show it.
 
 Why not Sentry or similar: with VLESS the app is excluded from its own VPN, so a crash
 upload would go over the normal network. The service, and anyone watching the network, would

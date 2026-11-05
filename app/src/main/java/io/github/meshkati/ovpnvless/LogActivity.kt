@@ -2,9 +2,11 @@ package io.github.meshkati.ovpnvless
 
 import android.app.Activity
 import android.content.ClipData
+import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.os.Build
 import android.os.Bundle
+import android.os.PersistableBundle
 import android.view.View
 import android.widget.ScrollView
 import android.widget.TextView
@@ -82,8 +84,13 @@ class LogActivity : Activity() {
     }
 
     private fun copy() {
-        getSystemService(ClipboardManager::class.java)
-            .setPrimaryClip(ClipData.newPlainText(getString(R.string.log), shown))
+        val clip = ClipData.newPlainText(getString(R.string.log), shown)
+        if (Build.VERSION.SDK_INT >= 33) {
+            // The log names servers and addresses: no preview of it in the
+            // clipboard's pop-up or the keyboard's clipboard suggestions.
+            clip.description.extras = PersistableBundle().apply { putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true) }
+        }
+        getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
         // Android 13+ confirms copies itself.
         if (Build.VERSION.SDK_INT < 33) Toast.makeText(this, R.string.log_copied, Toast.LENGTH_SHORT).show()
     }

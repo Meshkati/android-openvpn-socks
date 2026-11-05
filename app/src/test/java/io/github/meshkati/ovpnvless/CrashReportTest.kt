@@ -121,6 +121,53 @@ class CrashReportTest {
     }
 
     @Test
+    fun secretsIncludeThePassword() {
+        val secrets = CrashReport.secrets(listOf(CrashReport.Setup("", "", "alex", "correct horse")))
+        assertTrue("correct horse" in secrets)
+    }
+
+    @Test
+    fun secretsOfALinksParameters() {
+        val vless = "vless://0f8e2a3c-1111-4222-8333-123456789abc@203.0.113.9:443?type=ws&security=tls" +
+            "&sni=front.example.com&host=real.example.net&path=%2Fsecret-path#me"
+        val secrets = CrashReport.secrets("", vless, "").toSet()
+        assertTrue(secrets.containsAll(listOf("front.example.com", "real.example.net", "/secret-path")))
+        val reality = "vless://0f8e2a3c-1111-4222-8333-123456789abc@edge.example.org:443?security=reality" +
+            "&sni=www.example.com&pbk=Z84J2IelR9ch3k8VtlVhhs5ycBUlXA7wHBWcBrjqnAw&sid=6ba85179e30d4fc2"
+        assertTrue(
+            CrashReport.secrets("", reality, "").containsAll(
+                listOf("Z84J2IelR9ch3k8VtlVhhs5ycBUlXA7wHBWcBrjqnAw", "6ba85179e30d4fc2", "www.example.com")
+            )
+        )
+    }
+
+    @Test
+    fun secretsOfCredentialsInAJsonConfig() {
+        val json = """{"outbounds":[{"protocol":"trojan","settings":{"servers":[
+            {"address":"203.0.113.9","password":"trojan-pass-123"}]}},
+            {"protocol":"vless","settings":{"vnext":[{"address":"edge.example.org",
+            "users":[{"id":"0f8e2a3c-1111-4222-8333-123456789abc"}]}]}}]}"""
+        assertTrue(
+            CrashReport.secrets("", json, "").containsAll(
+                listOf("trojan-pass-123", "edge.example.org", "0f8e2a3c-1111-4222-8333-123456789abc")
+            )
+        )
+    }
+
+    @Test
+    fun redactsIpv6Addresses() {
+        val text = "dial tcp [2001:db8:85a3::8a2e:370:7334]:443: i/o timeout\n" +
+            "from fe80::1. and ::ffff:198.51.100.7\n" +
+            "at 14:03:59 in std::string, openvpn::ClientAPI, ab::cd, Foo.kt:120"
+        assertEquals(
+            "dial tcp [[ip]]:443: i/o timeout\n" +
+                "from [ip]. and [ip]\n" +
+                "at 14:03:59 in std::string, openvpn::ClientAPI, ab::cd, Foo.kt:120",
+            CrashReport.redact(text, emptyList()),
+        )
+    }
+
+    @Test
     fun redactsServersUuidsAndAddresses() {
         val text = "java.net.UnknownHostException: Unable to resolve host \"VPN.example.com\"\n" +
             "connect to 198.51.100.7:1194 failed, id 0f8e2a3c-1111-4222-8333-123456789abc\n" +

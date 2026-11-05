@@ -1,5 +1,6 @@
 package io.github.meshkati.ovpnvless
 
+import java.net.URLDecoder
 import java.net.URLEncoder
 import java.time.Instant
 import java.time.ZoneOffset
@@ -72,11 +73,12 @@ object CrashReport {
 
     /**
      * What to hide: the OpenVPN servers (every `remote`), the VLESS server and
-     * its UUID, a SOCKS or HTTP proxy and its username and password, server
-     * addresses in a VLESS JSON config, and the username.
+     * its UUID, a SOCKS or HTTP proxy and its username and password, the link's
+     * SNI, Host, path and REALITY keys, server addresses and credentials in a
+     * VLESS JSON config, and the OpenVPN username and password.
      * Short values are left alone: they would match ordinary words.
      */
-    fun secrets(profile: String, vless: String, username: String): List<String> {
+    fun secrets(profile: String, vless: String, username: String, password: String = ""): List<String> {
         val out = mutableListOf<String>()
         Regex("""^\s*remote\s+(\S+)""", RegexOption.MULTILINE).findAll(profile).forEach { out += it.groupValues[1] }
         (VlessConfig.parse(vless) as? VlessConfig.Link)?.let { link ->
@@ -90,26 +92,47 @@ object CrashReport {
             // A proxy's "user:pass": the password on its own too.
             if (':' in userInfo) out += userInfo.substringAfter(':')
         }
-        Regex(""""(?:address|serverName)"\s*:\s*"([^"]+)"""").findAll(vless).forEach { out += it.groupValues[1] }
+        // Link parameters that name the server or let someone use it.
+        Regex("""[?&](?:sni|host|path|serviceName|authority|pbk|sid|spx)=([^&#\s]+)""").findAll(link).forEach {
+            out += decode(it.groupValues[1])
+        }
+        Regex(""""(?:address|serverName|host|id|user|pass|password|publicKey|shortId|path)"\s*:\s*"([^"]+)"""")
+            .findAll(vless).forEach { out += it.groupValues[1] }
         out += username.trim()
+        out += password // as it is: spaces can be part of it
         return out.filter { it.length >= 4 }.distinct().sortedByDescending { it.length }
     }
 
     /** What a profile holds that [secrets] looks at. */
-    data class Setup(val profile: String, val vless: String, val username: String)
+    data class Setup(val profile: String, val vless: String, val username: String, val password: String = "")
 
     /** [secrets] of every saved profile together, longest first. */
     fun secrets(setups: List<Setup>): List<String> =
-        setups.flatMap { secrets(it.profile, it.vless, it.username) }.distinct().sortedByDescending { it.length }
+        setups.flatMap { secrets(it.profile, it.vless, it.username, it.password) }.distinct().sortedByDescending { it.length }
+
+    private fun decode(s: String): String = try {
+        URLDecoder.decode(s, "UTF-8")
+    } catch (e: IllegalArgumentException) {
+        s
+    }
 
     private val UUID = Regex("""\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b""")
     private val IPV4 = Regex("""(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])""")
 
-    /** [text] with [secrets], any UUID and any IPv4 address replaced. */
+    // Candidates only: each is checked with IpCheck.isIpAddress. A digit is
+    // required so C++ names like "ab::cd" in a backtrace are left alone;
+    // times ("14:03:59") are not valid IPv6.
+    private val IPV6 = Regex("""(?<![0-9A-Za-z:.])[0-9A-Fa-f:.]*:[0-9A-Fa-f:.]*:[0-9A-Fa-f:.]*(?![0-9A-Za-z:])""")
+
+    /** [text] with [secrets], any UUID and any IPv4 or IPv6 address replaced. */
     fun redact(text: String, secrets: List<String>): String {
         var out = text
         for (s in secrets) out = out.replace(s, "[server]", ignoreCase = true)
         out = UUID.replace(out, "[uuid]")
+        out = IPV6.replace(out) { m ->
+            val v = m.value.trimEnd('.')
+            if (v.any(Char::isDigit) && IpCheck.isIpAddress(v)) "[ip]" + m.value.substring(v.length) else m.value
+        }
         return IPV4.replace(out, "[ip]")
     }
 
