@@ -4,7 +4,9 @@
 
 include(FetchContent)
 
-set(OPENVPN3_TAG release/3.11.7)
+# 3.11.8 fixes CVE-2026-106017: before it, a profile's remote-cert-tls
+# checked nothing, so any certificate from the CA could pose as the server.
+set(OPENVPN3_TAG release/3.11.8)
 set(ASIO_TAG asio-1-24-0)   # version the openvpn3 release pins in deps/lib-versions
 set(MBEDTLS_TAG v3.6.7)
 set(LZ4_TAG v1.10.0)

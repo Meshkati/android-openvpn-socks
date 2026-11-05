@@ -26,35 +26,9 @@
 
 #include <ovpncli.hpp>
 
-namespace chain {
+#include "profile_text.hpp"
 
-// OpenVPN 3's mbed TLS backend caps tls-version-min at 1.2 when parsing, so it
-// rejects "tls-version-min 1.3" before connecting ("unrecognized TLS
-// version"), although mbed TLS itself negotiates TLS 1.3. OpenVPN Access
-// Server writes that line into its profiles, so append "or-highest", which
-// lowers only the minimum to 1.2; servers offering 1.3 still get 1.3. Sets
-// `changed` if a line was rewritten.
-inline std::string relax_tls_version_min(const std::string &profile, bool &changed) {
-    std::string out;
-    std::istringstream in(profile);
-    std::string line;
-    changed = false;
-    while (std::getline(in, line)) {
-        const bool cr = !line.empty() && line.back() == '\r';
-        if (cr)
-            line.pop_back();
-        std::istringstream words(line);
-        std::string directive, version, extra;
-        words >> directive >> version >> extra;
-        if (directive == "tls-version-min" && version == "1.3" && extra.empty()) {
-            line += " or-highest";
-            changed = true;
-        }
-        out += line;
-        out += cr ? "\r\n" : "\n";
-    }
-    return out;
-}
+namespace chain {
 
 struct TunConfig {
     std::vector<std::string> addresses;       // CIDR, e.g. "10.8.0.6/24"
@@ -212,10 +186,19 @@ public:
         mode_ = mode;
         openvpn::ClientAPI::Config config;
         bool relaxed = false;
-        config.content = relax_tls_version_min(profile, relaxed);
+        ServerCertCheck cert_check;
+        config.content = require_server_cert_check(relax_tls_version_min(profile, relaxed), cert_check);
         if (relaxed)
             listener_.on_log("profile has tls-version-min 1.3, which OpenVPN 3 with mbed TLS "
                              "rejects; using tls-version-min 1.3 or-highest (minimum TLS 1.2)");
+        if (cert_check.ns_cert_type_rewritten)
+            listener_.on_log("profile has ns-cert-type server, which OpenVPN 3 with mbed TLS 3 "
+                             "can't check; using remote-cert-tls server instead");
+        if (cert_check.added)
+            listener_.on_log("profile doesn't check the server's certificate beyond its CA, so "
+                             "another client's certificate could pose as the server; added "
+                             "remote-cert-tls server (use verify-x509-name for a server certificate "
+                             "without the TLS server usage)");
         config.guiVersion = "ovpn-vless-chain 0.1";
         config.tunPersist = true;  // keep the socketpair across reconnects
         config.dco = false;

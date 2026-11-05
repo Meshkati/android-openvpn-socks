@@ -134,7 +134,7 @@ userspace inside the app's process.
 
 | Need | Library | Version |
 |---|---|---|
-| OpenVPN client | [OpenVPN 3 core](https://github.com/OpenVPN/openvpn3) (official, OpenVPN Inc.) | `release/3.11.7` + one backported fix |
+| OpenVPN client | [OpenVPN 3 core](https://github.com/OpenVPN/openvpn3) (official, OpenVPN Inc.) | `release/3.11.8` + one backported fix |
 | TLS for OpenVPN 3 | [mbed TLS](https://github.com/Mbed-TLS/mbedtls) | 3.6.7 (LTS) |
 | OpenVPN 3 deps | asio (with openvpn3's patches), lz4, fmt | asio-1-24-0, 1.10.0, 12.2.0 |
 | VLESS client | [Xray-core](https://github.com/XTLS/Xray-core) | v26.10.10 (same commit as the official [AndroidLibXrayLite](https://github.com/2dust/AndroidLibXrayLite)) |
@@ -408,7 +408,7 @@ the payment. The app makes no request itself and stores nothing about it.
 
 The info icon on the home screen opens **About**: the app version and the versions of
 the two cores built into it, **Xray-core** (e.g. `26.10.10`) and **OpenVPN 3 core**
-(e.g. `3.11.7`). The copy icon puts all three on the clipboard, for a bug report, and
+(e.g. `3.11.8`). The copy icon puts all three on the clipboard, for a bug report, and
 **Source code on GitHub** opens this repository. The log also names the core versions
 at the start of each connection (Xray-core's only when the connection uses VLESS).
 
@@ -505,6 +505,9 @@ learn the user's real IP and that they use this app.
   `chain::Client` in `Mode::Device` with a real Linux TUN, set up from the pushed
   settings as the app does on Android. It then pings the server's tunnel address and
   fetches a file through the TUN.
+* `hosttest/profile_text_test.cpp` (CMake target `profile_text_test`, no OpenVPN 3
+  needed) checks the `.ovpn` rewrites: `tls-version-min`, `ns-cert-type`, and the
+  added `remote-cert-tls server`.
 
 ## Status and limitations
 
@@ -538,6 +541,17 @@ carries all traffic. whatismyip.com in Chrome shows the VLESS exit for IPv4 and
   master) and throws before connecting. `chain::Client` rewrites the line to
   `tls-version-min 1.3 or-highest`, which only lowers the minimum: mbed TLS 3.6 still
   negotiates TLS 1.3 with servers that offer it.
+* **Server certificate checks (CVE-2026-106017).** OpenVPN 3 up to 3.11.7 discarded a
+  profile's `remote-cert-tls`, so with it the client still accepted any certificate from
+  the profile's CA as the server's: on a server whose users get client certificates from
+  that CA, any of them could pose as the server. The app now uses 3.11.8, which enforces
+  it. And since OpenVPN 3 checks nothing beyond the CA unless the profile asks, a profile
+  with none of `remote-cert-tls`, `remote-cert-eku`, `verify-x509-name` or
+  `peer-fingerprint` gets `remote-cert-tls server` (`profile_text.hpp`), as Easy-RSA and
+  Access Server certificates allow; the log says so. A PKI whose server certificate lacks
+  the TLS server usage can put `verify-x509-name <server name> name` in the profile
+  instead. `ns-cert-type server`, which OpenVPN 3 with mbed TLS 3 can't check, is
+  rewritten to `remote-cert-tls server`.
 * **Authenticator codes (`static-challenge`).** The app has a one-time code field. The
   code goes to OpenVPN 3 as `ProvideCreds.response` (sent as
   `SCRV1:<password>:<code>`), is never stored, and is cleared after each Connect.

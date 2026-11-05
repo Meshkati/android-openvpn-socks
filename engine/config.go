@@ -293,3 +293,25 @@ func vlessOutbound(link string) (map[string]any, error) {
 		"streamSettings": stream,
 	}, nil
 }
+
+// linkWarnings: what a link leaves readable beyond the OpenVPN server, where
+// it travels on to the VLESS or proxy server outside the OpenVPN tunnel.
+func linkWarnings(out map[string]any) []string {
+	stream, _ := out["streamSettings"].(map[string]any)
+	security, _ := stream["security"].(string)
+	if security != "" && security != "none" {
+		return nil
+	}
+	settings, _ := out["settings"].(map[string]any)
+	switch out["protocol"] {
+	case "vless":
+		return []string{"the VLESS link has no TLS or REALITY (security=none): between the OpenVPN " +
+			"server and the VLESS server, its UUID and apps' traffic are not encrypted by VLESS"}
+	case "socks", "http":
+		if _, ok := settings["pass"]; ok {
+			return []string{"the proxy link has a password but no TLS: between the OpenVPN server " +
+				"and the proxy, the username and password travel unencrypted"}
+		}
+	}
+	return nil
+}

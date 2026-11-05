@@ -116,9 +116,13 @@ func Start(ovpnFd int32, ovpnAddrs, ovpnDNS string, mtu int32, tunFd int32, conf
 	}
 
 	jsonConfig := config
+	var warnings []string
 	if !strings.HasPrefix(strings.TrimSpace(config), "{") {
 		if jsonConfig, err = BuildXrayConfig(config, mtu); err != nil {
 			return err
+		}
+		if out, err := proxyOutbound(config); err == nil {
+			warnings = linkWarnings(out)
 		}
 	}
 	xc, err := serial.LoadJSONConfig(strings.NewReader(jsonConfig))
@@ -149,6 +153,9 @@ func Start(ovpnFd int32, ovpnAddrs, ovpnDNS string, mtu int32, tunFd int32, conf
 	}
 	instance, tunnel = inst, tn
 	logLine(fmt.Sprintf("engine: Xray %s up, tunnel %v dns %v", core.Version(), addrs, dns))
+	for _, w := range warnings {
+		logLine("engine: warning: " + w)
+	}
 	return nil
 }
 
