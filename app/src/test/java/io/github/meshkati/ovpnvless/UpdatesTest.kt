@@ -105,4 +105,27 @@ class UpdatesTest {
         assertEquals(Updates.Found.Failed, Updates.found("0.2.0", "nightly"))
         assertEquals(Updates.Found.Failed, Updates.found("0.1-debug", null))
     }
+
+    @Test
+    fun withVlessConnectedTheCheckGoesThroughXray() {
+        assertEquals(Updates.Way.XRAY, Updates.way(VpnState.Phase.CONNECTED, Route.VIA_VLESS))
+    }
+
+    @Test
+    fun whileVlessConnectsOrDisconnectsThereIsNoCheck() {
+        // The app is outside its own VPN then, with no Xray to carry the request.
+        assertNull(Updates.way(VpnState.Phase.CONNECTING, Route.VIA_VLESS))
+        assertNull(Updates.way(VpnState.Phase.DISCONNECTING, Route.VIA_VLESS))
+    }
+
+    @Test
+    fun withoutVlessTheAppAsksGitHubItself() {
+        // Off: the route is the last session's, which no longer matters.
+        assertEquals(Updates.Way.DIRECT, Updates.way(VpnState.Phase.DISCONNECTED, Route.VIA_VLESS))
+        assertEquals(Updates.Way.DIRECT, Updates.way(VpnState.Phase.DISCONNECTED, Route.OPENVPN_ONLY))
+        // OpenVPN only: the app is inside its own VPN.
+        for (phase in VpnState.Phase.entries) {
+            assertEquals(Updates.Way.DIRECT, Updates.way(phase, Route.OPENVPN_ONLY))
+        }
+    }
 }

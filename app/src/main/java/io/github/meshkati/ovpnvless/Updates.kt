@@ -39,6 +39,27 @@ object Updates {
     /** Sent with each check, as GitHub requires a User-Agent ([fetchLatestRelease]). */
     fun userAgent(installed: String) = "ovpnvless/$installed (Android)"
 
+    /** How the app's own request to GitHub leaves ([fetchLatestRelease]). */
+    enum class Way {
+        /** From the app: the VPN is off, or OpenVPN only, which the app is inside of. */
+        DIRECT,
+
+        /** Through Xray, as apps' traffic goes: with VLESS the app is outside its own VPN. */
+        XRAY,
+    }
+
+    /**
+     * The way a check started now would go, or null while a VLESS session is
+     * connecting or disconnecting. Then the app is already, or still, outside
+     * its own VPN, so a plain request would show GitHub the phone's real IP,
+     * and Xray is not there to carry it.
+     */
+    fun way(phase: VpnState.Phase, route: Route): Way? = when {
+        phase == VpnState.Phase.DISCONNECTED || route == Route.OPENVPN_ONLY -> Way.DIRECT
+        phase == VpnState.Phase.CONNECTED -> Way.XRAY
+        else -> null
+    }
+
     /** After a check that worked, the next one waits a day. */
     const val INTERVAL_OK = 24L * 60 * 60 * 1000
 
