@@ -33,7 +33,10 @@ class MainActivity : Activity() {
     companion object {
         private const val REQUEST_VPN = 1
 
-        /** From a widget: connect as if the toggle was tapped (asks for the VPN permission or the code). */
+        /**
+         * From a widget: connect as if the toggle was tapped (asks for the VPN
+         * permission or the code). Only with this app's key ([ConnectRequest]).
+         */
         const val EXTRA_CONNECT = "connect"
     }
 
@@ -86,6 +89,7 @@ class MainActivity : Activity() {
         // rotation or when the app is reopened from the recent apps.
         if (savedInstanceState != null || intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) {
             intent.removeExtra(EXTRA_CONNECT)
+            intent.removeExtra(ConnectRequest.EXTRA_KEY)
         }
         edgeToEdge(findViewById(R.id.root))
         settings = Settings(this)
@@ -181,10 +185,10 @@ class MainActivity : Activity() {
         showCrash()
         showUpdate()
         checkForUpdate()
-        if (intent.getBooleanExtra(EXTRA_CONNECT, false)) {
-            intent.removeExtra(EXTRA_CONNECT) // not again when coming back to this screen
-            connectFromWidget()
-        }
+        val connect = ConnectRequest.isValid(this, intent)
+        intent.removeExtra(EXTRA_CONNECT) // not again when coming back to this screen
+        intent.removeExtra(ConnectRequest.EXTRA_KEY)
+        if (connect) connectFromWidget()
     }
 
     /** Reads the profile in use. */

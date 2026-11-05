@@ -147,17 +147,6 @@ object IpCheck {
         }
     }
 
-    private fun readAtMost(input: java.io.InputStream, limit: Int): ByteArray {
-        val buf = ByteArray(limit)
-        var n = 0
-        while (n < limit) {
-            val r = input.read(buf, n, limit - n)
-            if (r < 0) break
-            n += r
-        }
-        return buf.copyOf(n)
-    }
-
     private fun describe(e: IOException): String = when (e) {
         is java.net.SocketTimeoutException -> "no answer in ${TIMEOUT_MS / 1000} s"
         is java.net.UnknownHostException -> "couldn't look up ${java.net.URL(URL).host}"

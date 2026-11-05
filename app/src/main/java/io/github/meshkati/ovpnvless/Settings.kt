@@ -83,6 +83,14 @@ class Settings(context: Context) {
         get() = prefs.getLong("next_update_check", 0)
         set(v) = prefs.edit().putLong("next_update_check", v).apply()
 
+    /** Carried by this app's own requests to connect from the home screen ([ConnectRequest]). Made once. */
+    val connectKey: String
+        get() = synchronized(Settings::class.java) {
+            prefs.getString("connect_key", null) ?: ConnectRequest.newKey().also {
+                prefs.edit().putString("connect_key", it).commit()
+            }
+        }
+
     /** Time of the newest process exit already looked at for a crash report ([Crashes]). */
     var lastExitSeen: Long
         get() = prefs.getLong("last_exit_seen", 0)

@@ -15,6 +15,9 @@ class OpenVpnActivity : Activity() {
 
     companion object {
         private const val REQUEST_IMPORT = 1
+
+        /** Bigger than any real profile, even with inline certificates and keys. */
+        private const val MAX_IMPORT = 1 shl 20
     }
 
     private lateinit var profile: Profile
@@ -99,15 +102,21 @@ class OpenVpnActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != REQUEST_IMPORT || resultCode != RESULT_OK) return
         val uri = data?.data ?: return
-        val text = try {
-            contentResolver.openInputStream(uri)?.use { it.readBytes().decodeToString() }
+        val bytes = try {
+            // Any app's file can be picked: read no more than a profile can be.
+            contentResolver.openInputStream(uri)?.use { readAtMost(it, MAX_IMPORT + 1) }
         } catch (e: Exception) {
             null
         }
-        if (text == null) {
+        if (bytes == null) {
             Toast.makeText(this, R.string.import_failed, Toast.LENGTH_LONG).show()
             return
         }
+        if (bytes.size > MAX_IMPORT) {
+            Toast.makeText(this, R.string.import_too_big, Toast.LENGTH_LONG).show()
+            return
+        }
+        val text = bytes.decodeToString()
         profile.ovpn = text
         renderSummary()
     }
