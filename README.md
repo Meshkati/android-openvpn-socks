@@ -502,7 +502,8 @@ learn the user's real IP and that they use this app.
   to status text, the choice between the two routes, how the IP check goes in each state and
   what counts as an IP in its answer, what the widgets show in each state, the version comparison and
   timing of the update check, the donation amounts, and the crash report (reading a tombstone, hiding
-  servers and addresses, cutting the GitHub link to size).
+  servers and addresses, cutting the GitHub link to size), and sealing the profiles'
+  secrets (round trip, tampering, a value moved to another field, another key).
 * `sudo hosttest/run-e2e.sh` (Linux, needs `openvpn dnsmasq openssl python3 go cmake ninja`)
   runs the full chain on a PC. It starts an OpenVPN 2.6 server (user/pass + tls-crypt),
   a DNS server reachable only inside the tunnel, and an Xray **VLESS + REALITY + Vision**
@@ -571,7 +572,18 @@ Limitations of this minimal version:
   Static challenge (`static-challenge`, e.g. authenticator codes) works, but the code
   must be typed for each Connect, so always-on VPN cannot start such a profile.
 * With VLESS, IPv6 is blocked while connected. Everything goes over IPv4 through VLESS.
-* Credentials are stored unencrypted in app-private SharedPreferences, one file per profile.
+* Profiles are kept in app-private SharedPreferences, one file per profile. The fields
+  that hold secrets (the `.ovpn`, which can contain private and `tls-crypt` keys, the
+  username and password, and the VLESS link) are sealed with AES-256-GCM under a key in
+  the Android Keystore (`Secrets.kt`), which never leaves it. A copy of the files alone
+  doesn't give them away. Root on the running phone can still use the key, as the app
+  does. The key needs no screen lock, so always-on VPN can start at boot. Values saved
+  by older versions are sealed the first time they are read. Nothing is backed up or
+  moved to a new phone (`allowBackup="false"`, and `data_extraction_rules.xml` for
+  Android 12+ device-to-device transfers). If the key is ever lost, the sealed fields
+  read as empty and need to be entered again.
+* The OpenVPN, VLESS and `.ovpn` text screens can't be screenshotted or recorded
+  (`FLAG_SECURE`), and show blank in the recent apps.
 * With VLESS, apps' DNS is fixed to `1.1.1.1` (carried over VLESS). There are no routing
   rules or per-app selection; everything except this app goes through the chain.
 * With VLESS, OpenVPN `route`/`redirect-gateway` options are ignored. Only Xray uses the
