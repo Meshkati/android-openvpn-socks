@@ -502,7 +502,9 @@ learn the user's real IP and that they use this app.
   inside the tunnel when OpenVPN pushes no DNS, and that `net.DefaultResolver` does
   too while the engine runs. It checks which pasted-config inbounds are refused, and
   that the update check's request (`Fetch`) goes through Xray.
-  It also checks that a Go panic lands in the crash file. The engine builds on Linux
+  It also checks that a Go panic lands in the crash file. `go test -run '^$'
+  -fuzz=FuzzBuildXrayConfig -fuzztime=5m` fuzzes the link parser and Xray's config
+  builder behind it for panics. The engine builds on Linux
   only (gVisor).
 * `./gradlew :app:testDebugUnitTest` runs the app's JVM unit tests: the OpenVPN config and
   `vless://`, `socks://` and `http(s)://` summaries the UI shows, the profile list (order, delete and undo, which profile
@@ -510,8 +512,10 @@ learn the user's real IP and that they use this app.
   to status text, the choice between the two routes, how the IP check goes in each state and
   what counts as an IP in its answer, what the widgets show in each state, the version comparison and
   timing of the update check, the donation amounts, and the crash report (reading a tombstone, hiding
-  servers and addresses, cutting the GitHub link to size), and sealing the profiles'
-  secrets (round trip, tampering, a value moved to another field, another key).
+  servers and addresses, cutting the GitHub link to size), sealing the profiles'
+  secrets (round trip, tampering, a value moved to another field, another key), that
+  only this app's own widgets and notification can make the home screen connect, and
+  that mutated links and `.ovpn` files never make the parsers throw.
 * `sudo hosttest/run-e2e.sh` (Linux, needs `openvpn dnsmasq openssl python3 go cmake ninja`)
   runs the full chain on a PC. It starts an OpenVPN 2.6 server (user/pass + tls-crypt),
   a DNS server reachable only inside the tunnel, and an Xray **VLESS + REALITY + Vision**

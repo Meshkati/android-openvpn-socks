@@ -275,9 +275,7 @@ object Widgets {
 
     private fun openApp(context: Context, connect: Boolean): PendingIntent = PendingIntent.getActivity(
         context, if (connect) REQUEST_OPEN_AND_CONNECT else REQUEST_OPEN,
-        Intent(context, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            .putExtra(MainActivity.EXTRA_CONNECT, connect),
+        ConnectRequest.openApp(context, connect),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 

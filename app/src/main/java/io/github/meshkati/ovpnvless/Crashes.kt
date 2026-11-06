@@ -117,15 +117,6 @@ object Crashes {
         }
     }
 
-    /** Up to [MAX_READ] bytes (InputStream.readNBytes needs API 33). */
-    private fun readText(input: InputStream): String {
-        val buf = ByteArray(MAX_READ)
-        var n = 0
-        while (n < buf.size) {
-            val r = input.read(buf, n, buf.size - n)
-            if (r < 0) break
-            n += r
-        }
-        return String(buf, 0, n, Charsets.UTF_8)
-    }
+    /** Up to [MAX_READ] bytes. */
+    private fun readText(input: InputStream): String = String(readAtMost(input, MAX_READ), Charsets.UTF_8)
 }

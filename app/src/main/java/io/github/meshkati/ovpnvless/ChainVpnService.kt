@@ -469,9 +469,7 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
 
     private fun openApp(connect: Boolean): PendingIntent = PendingIntent.getActivity(
         this, if (connect) REQUEST_RESUME else REQUEST_OPEN,
-        Intent(this, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            .putExtra(MainActivity.EXTRA_CONNECT, connect),
+        ConnectRequest.openApp(this, connect),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 }
