@@ -18,8 +18,6 @@ In the commands below:
 - [ ] `scripts/build-engine.sh` (gomobile + NDK; PR #22 adds `Engine.fetch`).
 - [ ] `./gradlew :app:testDebugUnitTest :app:assembleDebug`
 - [ ] `./gradlew :app:lintDebug`, and compare its warnings with `main`.
-- [ ] Merge order: #22 and #26 both edit `Start` in `engine/engine.go`, and
-      several PRs edit the same README paragraph. Rebase whichever goes second.
 
 ## #22: traffic leaks (`fix/vpn-traffic-leaks`)
 
@@ -89,6 +87,18 @@ In the commands below:
       Easy-RSA/Access Server certificate.
 - [ ] A profile with `ns-cert-type server`: the log shows the rewrite, and it
       connects.
+- [ ] **Check by name** notice. Use a server certificate without the TLS
+      server usage (no `extendedKeyUsage=serverAuth`) and a profile with no
+      server check:
+  - [ ] Connecting fails with the certificate error. The notice appears
+        under it, showing the certificate's name. **Not now** hides it.
+  - [ ] **Check by name** shows the toast. The `.ovpn` text screen shows
+        `verify-x509-name <name> name` at the end. Connecting again works.
+  - [ ] With the same server, a profile that has `remote-cert-tls server`
+        itself gets the certificate error and no notice.
+  - [ ] Switch to another profile while the notice shows: it goes away
+        (the offer belongs to the profile that failed).
+  - [ ] Layout in light and dark theme, and with a long name.
 - [ ] The **OpenVPN-only route** on a phone. It was never tried on one; see
       the README's leak-check list.
 
