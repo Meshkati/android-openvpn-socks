@@ -272,10 +272,15 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
 
     override fun onTun(fd: Int, addresses: Array<String>, dns: Array<String>, mtu: Int): Boolean {
         VpnState.log("OpenVPN tunnel: ${addresses.joinToString()} dns=${dns.joinToString()} mtu=$mtu")
-        stopEngine() // OpenVPN re-established the tunnel with new settings
 
+        // Called again when OpenVPN re-establishes the tunnel with new settings.
+        // The new TUN is built before the old one is closed: Android then moves
+        // apps' traffic straight to the new one. Closed first, there would be
+        // a moment with no VPN, and apps' traffic would leave over the real
+        // network (unless "Block connections without VPN" is on).
+        var pfd: ParcelFileDescriptor? = null
         return try {
-            val pfd = Builder()
+            pfd = Builder()
                 .setSession(getString(R.string.app_name))
                 .setMtu(mtu)
                 // IPv4 only. With no IPv6 address or route, Android blocks
@@ -290,6 +295,7 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
                 // or OpenVPN would try to tunnel through itself.
                 .addDisallowedApplication(packageName)
                 .establish() ?: throw IllegalStateException("VPN permission is not granted")
+            stopEngine() // the old engine and TUN, now that apps' traffic goes to the new one
             tun = pfd
             Engine.start(fd, addresses.joinToString(","), dns.joinToString(","), mtu, pfd.fd, vlessConfig)
             tunnelUp(addresses)
@@ -297,8 +303,8 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         } catch (e: Exception) {
             VpnState.setVlessError(e.message ?: e.toString())
             VpnState.log("failed to start VLESS: ${e.message}")
-            tun?.close()
-            tun = null
+            stopEngine() // closes tun, the old TUN or the new one
+            pfd?.close() // the new one, if it failed before it became tun
             false
         }
     }

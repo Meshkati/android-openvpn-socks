@@ -301,7 +301,12 @@ the route to set it up for that profile; tap the profile to switch (see [Profile
    UDP ASSOCIATE.
    You can also paste a full Xray JSON config instead; it must contain a `tun` inbound.
    The VLESS host may be a name that only resolves inside the OpenVPN network. It is
-   resolved with the DNS servers OpenVPN pushes. The screen shows what it read from the
+   resolved with the DNS servers OpenVPN pushes; if it pushes none, with `1.1.1.1` and
+   `8.8.8.8` inside the tunnel, never with the phone's own resolver.
+   In a pasted JSON config, an inbound that listens beyond the phone (no `listen`, which
+   Xray takes as `0.0.0.0`, or a LAN address) is refused: anyone on the same Wi-Fi could
+   use it as a proxy. One on `127.0.0.1` gets a warning in the log, since any app on the
+   phone can use it, and through it see the VLESS exit. The screen shows what it read from the
    link (server, port, transport, security) so you can check it.
    A TLS link with `fp=randomized` or `fp=randomizednoalpn` gets a warning, here and on
    the home screen, with a button that changes it to `fp=chrome`. Those fingerprints can
@@ -431,9 +436,11 @@ shows its notice too.
 * The app only reads `api.github.com/repos/Meshkati/android-openvpn-socks/releases/latest`
   over HTTPS. The request carries no account, device or settings, only a
   `User-Agent: ovpnvless/<version> (Android)` header, which GitHub requires. GitHub sees
-  the phone's IP address. With VLESS the app is excluded from its own VPN, so this
-  request goes over the normal network, connected or not. With OpenVPN only it goes
-  through OpenVPN while connected.
+  the IP address the request comes from. With VLESS connected, the app is excluded from
+  its own VPN, so the request is handed to Xray (`engine.Fetch`) and leaves through
+  VLESS like apps' traffic; while a VLESS session is connecting or disconnecting there
+  is no check, since it would show GitHub the phone's real IP. With OpenVPN only it goes
+  through OpenVPN while connected. With the VPN off it goes over the normal network.
 * It never downloads or installs anything itself. The link it opens is built from the
   version number, so it always points at this repository. Android installs an update
   only if it is signed with the same key as the installed app, so an APK from
@@ -483,6 +490,10 @@ learn the user's real IP and that they use this app.
   real Xray instance against a local HTTPS server (answer, log, bad answers, untrusted
   certificate), also through local SOCKS5 and HTTP proxies with a password, and that apps'
   DNS reaches the DoH server through the proxy.
+  On a gVisor stack standing in for the OpenVPN network, it checks that lookups stay
+  inside the tunnel when OpenVPN pushes no DNS, and that `net.DefaultResolver` does
+  too while the engine runs. It checks which pasted-config inbounds are refused, and
+  that the update check's request (`Fetch`) goes through Xray.
   It also checks that a Go panic lands in the crash file. The engine builds on Linux
   only (gVisor).
 * `./gradlew :app:testDebugUnitTest` runs the app's JVM unit tests: the OpenVPN config and
@@ -578,10 +589,11 @@ VLESS. Check these before relying on the app:
   `adb shell 'cat /proc/net/tcp /proc/net/tcp6 /proc/net/udp /proc/net/udp6'` filtered
   by the app's UID (column 8), over time and across connect/reconnect, not as a single
   snapshot. One snapshot on the Pixel showed only the OpenVPN connection.
-- [ ] **VLESS hostname lookup without pushed DNS.** `engine/tunnelnet.go` falls back to
-  `net.DefaultResolver` when OpenVPN pushes no DNS servers. In this process that
-  resolver uses Wi-Fi, so the VLESS hostname would be resolved outside the tunnel.
-  Refuse to start, or use a fixed resolver inside the tunnel.
+- [x] **VLESS hostname lookup without pushed DNS.** `engine/tunnelnet.go` used to fall
+  back to `net.DefaultResolver`, which in this process asks Wi-Fi. It now asks `1.1.1.1`
+  and `8.8.8.8` inside the tunnel. While the engine runs, `net.DefaultResolver` itself
+  also sends its queries into the tunnel, which covers Xray's own lookups outside the
+  dialer (its `localhost` DNS server, `freedom` domain strategies, SRV and TXT).
 - [ ] **DNS leaks.** Apps use `1.1.1.1` through VLESS. Confirm with dnsleaktest.com or
   browserleaks.com/dns that no ISP or OpenVPN-network resolver sees the queries, also
   with Android Private DNS on and with Chrome's Secure DNS.
@@ -590,15 +602,16 @@ VLESS. Check these before relying on the app:
   Check browserleaks.com/webrtc for public candidates, and compare exit IPs over
   HTTP/3 and over TCP.
 - [ ] **Pasted Xray JSON configs.** A user config with a `freedom`/direct outbound
-  exits through the OpenVPN network (the system dialer is replaced). A `dns` section
-  with `localhost` uses Go's resolver, which goes to Wi-Fi from this process. Warn about
-  or reject these.
+  exits through the OpenVPN network (the system dialer is replaced), not VLESS. A `dns`
+  section with `localhost` now resolves inside the tunnel (see above), and inbounds that
+  listen beyond the phone are refused. Still to decide: warn about `freedom` outbounds.
 - [ ] **Kill switch.** If OpenVPN drops for good or the app crashes, the VPN goes away
   and apps use Wi-Fi directly. Test with Android's Always-on VPN + "Block connections
   without VPN", and decide how that works with authenticator codes.
 - [ ] **Reconnects and network changes.** Check Wi-Fi ↔ mobile switches and OpenVPN
-  `ping-restart`: `onTun` rebuilds the TUN and restarts the engine, so look for windows
-  where traffic is not carried, and check that nothing falls back to the real network.
+  `ping-restart`: `onTun` rebuilds the TUN and restarts the engine. It now builds the
+  new TUN before closing the old one, so Android hands apps' traffic over without a
+  moment of no VPN. Check on a phone that nothing falls back to the real network.
 - [ ] **OpenVPN only on a phone.** Try a `redirect-gateway` profile and a split one
   (only `route`s): apps outside the routes should use Wi-Fi directly, the pushed DNS
   should be used, IPv6 should be blocked when the server sets up none, and a

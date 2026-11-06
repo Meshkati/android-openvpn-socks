@@ -109,28 +109,13 @@ func checkIP(ctx context.Context, inst *core.Instance, rawURL string, roots *x50
 	host := req.URL.Hostname()
 
 	logStep("GET %s through Xray, as apps' traffic goes", rawURL)
-	transport := &http.Transport{
-		DialContext: func(_ context.Context, network, addr string) (net.Conn, error) {
-			h, p, err := net.SplitHostPort(addr)
-			if err != nil {
-				return nil, err
-			}
-			port, err := xnet.PortFromString(p)
-			if err != nil {
-				return nil, err
-			}
-			dest := xnet.TCPDestination(xnet.ParseAddress(h), port)
-			if dest.Address.Family().IsDomain() {
-				logStep("open %s through Xray's routing; the outbound's server looks up %s", dest, h)
-			} else {
-				logStep("open %s through Xray's routing", dest)
-			}
-			// ctx, not the dial context: the stream lives as long as the check.
-			return core.Dial(ctx, inst, dest)
-		},
-		TLSClientConfig:   &tls.Config{RootCAs: roots},
-		DisableKeepAlives: true,
-	}
+	transport := xrayTransport(ctx, inst, roots, func(dest xnet.Destination) {
+		if dest.Address.Family().IsDomain() {
+			logStep("open %s through Xray's routing; the outbound's server looks up %s", dest, dest.Address)
+		} else {
+			logStep("open %s through Xray's routing", dest)
+		}
+	})
 	defer transport.CloseIdleConnections()
 	client := &http.Client{
 		Transport: transport,
@@ -204,6 +189,33 @@ func checkIP(ctx context.Context, inst *core.Instance, rawURL string, roots *x50
 	ip = ip.Unmap()
 	logStep("done: %s sees this connection coming from %s", host, ip)
 	return ip.String(), nil
+}
+
+// xrayTransport makes HTTP connections through inst's routing, the way apps'
+// traffic leaves, instead of from the app's own sockets. Each connection is
+// opened with ctx, not the dial context, so it lives as long as the request.
+// roots replaces the system CA pool when not nil (tests). onDial, if not nil,
+// hears of each connection.
+func xrayTransport(ctx context.Context, inst *core.Instance, roots *x509.CertPool, onDial func(xnet.Destination)) *http.Transport {
+	return &http.Transport{
+		DialContext: func(_ context.Context, network, addr string) (net.Conn, error) {
+			h, p, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, err
+			}
+			port, err := xnet.PortFromString(p)
+			if err != nil {
+				return nil, err
+			}
+			dest := xnet.TCPDestination(xnet.ParseAddress(h), port)
+			if onDial != nil {
+				onDial(dest)
+			}
+			return core.Dial(ctx, inst, dest)
+		},
+		TLSClientConfig:   &tls.Config{RootCAs: roots},
+		DisableKeepAlives: true,
+	}
 }
 
 // describeCheckError turns the transport's errors into a sentence.
