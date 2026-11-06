@@ -3,6 +3,7 @@
 #   ovpn_hosttest  - runs chain::Client against a real server and hands the
 #                    packet socket to a child process (see run-e2e.sh)
 #   ovpn3jni_host  - compile/link check of the JNI bridge against the JDK
+#   profile_text_test - unit test of the .ovpn rewrites (no OpenVPN 3 needed)
 cmake_minimum_required(VERSION 3.22.1)
 project(ovpn_hosttest C CXX)
 
@@ -11,6 +12,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(NATIVE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../app/src/main/cpp)
+
+add_executable(profile_text_test profile_text_test.cpp)
+target_include_directories(profile_text_test PRIVATE ${NATIVE_DIR})
 include(${NATIVE_DIR}/cmake/openvpn3.cmake)
 find_package(Threads REQUIRED)
 

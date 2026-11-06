@@ -107,6 +107,9 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
     // (OPENVPN_ONLY). Session thread only.
     private var tunnelUp = false
 
+    // This session's OpenVPN log, read for a server name to check by. Session thread.
+    private var nameCheck = ServerNameCheck.Tracker()
+
     // Notification text: "<OpenVPN server> → <VLESS server>".
     private var route = ""
 
@@ -163,6 +166,7 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
         startForegroundNotification()
         vlessConfig = if (sessionRoute == Route.VIA_VLESS) profile.vless else ""
         VpnState.startSession(sessionRoute)
+        nameCheck = ServerNameCheck.Tracker()
         IpCheck.reset()
         if (sessionRoute == Route.OPENVPN_ONLY) underlying.start()
         VpnState.set(VpnState.Phase.CONNECTING, "starting OpenVPN")
@@ -184,6 +188,8 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
                 e.toString()
             }
             VpnState.log(error?.let { "OpenVPN error: $it" } ?: "OpenVPN session ended")
+            // Before the phase changes, so the home screen shows it with the failure.
+            nameCheck.name?.let { VpnState.setNameCheckOffer(ServerNameCheck.Offer(profile.id, it)) }
             stopEngine()
             underlying.stop()
             val (again, pausing) = synchronized(this) {
@@ -255,7 +261,10 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
 
     // --- OpenVpn3.Callbacks (session thread) ------------------------------
 
-    override fun onLog(line: String) = VpnState.log("openvpn: $line")
+    override fun onLog(line: String) {
+        nameCheck.onLog(line)
+        VpnState.log("openvpn: $line")
+    }
 
     override fun onEvent(name: String, info: String, error: Boolean, fatal: Boolean) {
         VpnState.log("openvpn event: $name $info")

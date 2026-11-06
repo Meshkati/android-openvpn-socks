@@ -48,11 +48,25 @@ object VpnState {
         notifyObservers()
     }
 
+    /**
+     * After a session failed on the server check the app added: the name to
+     * check that profile's server by instead ([ServerNameCheck]).
+     */
+    @Volatile
+    var nameCheckOffer: ServerNameCheck.Offer? = null
+        private set
+
     /** Clears the per-session fields when a new session starts. */
     fun startSession(route: Route) {
         this.route = route
         tunnelAddress = ""
         vlessError = ""
+        nameCheckOffer = null
+    }
+
+    fun setNameCheckOffer(offer: ServerNameCheck.Offer?) {
+        nameCheckOffer = offer
+        notifyObservers()
     }
 
     fun setTunnel(address: String) {

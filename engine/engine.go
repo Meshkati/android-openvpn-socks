@@ -121,17 +121,20 @@ func Start(ovpnFd int32, ovpnAddrs, ovpnDNS string, mtu int32, tunFd int32, conf
 	}
 
 	jsonConfig := config
+	var warnings []string
 	pasted := strings.HasPrefix(strings.TrimSpace(config), "{")
 	if !pasted {
 		if jsonConfig, err = BuildXrayConfig(config, mtu); err != nil {
 			return err
+		}
+		if out, err := proxyOutbound(config); err == nil {
+			warnings = linkWarnings(out)
 		}
 	}
 	jc, err := serial.DecodeJSONConfig(strings.NewReader(jsonConfig))
 	if err != nil {
 		return fmt.Errorf("xray config: %w", err)
 	}
-	var warnings []string
 	if pasted {
 		if warnings, err = checkListeners(jc); err != nil {
 			return fmt.Errorf("xray config: %w", err)

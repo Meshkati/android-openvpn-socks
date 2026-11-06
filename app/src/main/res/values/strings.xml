@@ -223,6 +223,11 @@
     <string name="fp_use_safe">Use fp=chrome</string>
     <string name="fp_keep">Keep</string>
     <string name="fp_switched">Switched to fp=chrome.</string>
+    <string name="name_check_title">Check this server by name instead?</string>
+    <string name="name_check_help">The server\'s certificate isn\'t marked for use by a server, so the app\'s check refused it. Its name can be checked instead: it says \"%1$s\". Use this only if you know that name as your server\'s. Someone posing as your server right now would show their own name here.</string>
+    <string name="name_check_use">Check by name</string>
+    <string name="name_check_dismiss">Not now</string>
+    <string name="name_check_added">The profile now checks that the server is \"%1$s\". Connect again.</string>
     <string name="fp_switched_reconnect">Switched to fp=chrome. Reconnect to use it.</string>
 
     <!-- Log screen -->

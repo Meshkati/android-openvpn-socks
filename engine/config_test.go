@@ -140,6 +140,28 @@ func TestBadLinks(t *testing.T) {
 	}
 }
 
+func TestLinkWarnings(t *testing.T) {
+	cases := map[string]bool{
+		"vless://id@h.example:443?security=tls&sni=h.example":                 false,
+		"vless://id@h.example:443?security=reality&pbk=k&sni=www.example.com": false,
+		"vless://id@h.example:80?type=ws&path=%2F":                            true,
+		"vless://id@h.example:80?security=none":                               true,
+		"socks5://user:pass@p.example:1080":                                   true,
+		"http://user:pass@p.example:8080":                                     true,
+		"https://user:pass@p.example:443":                                     false,
+		"socks5://p.example:1080":                                             false,
+	}
+	for link, want := range cases {
+		out, err := proxyOutbound(link)
+		if err != nil {
+			t.Fatalf("%s: %v", link, err)
+		}
+		if got := len(linkWarnings(out)) > 0; got != want {
+			t.Errorf("%s: warning = %v, want %v", link, got, want)
+		}
+	}
+}
+
 func TestPastedConfigListeners(t *testing.T) {
 	tun := `{"protocol": "tun", "settings": {"name": "xray0"}}`
 	cases := []struct {
