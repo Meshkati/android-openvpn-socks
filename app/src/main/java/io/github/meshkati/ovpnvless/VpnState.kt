@@ -65,7 +65,9 @@ object VpnState {
     }
 
     fun log(line: String) {
-        Log.i("ovpn-vless", line)
+        // Not to logcat in release builds: it ends up in bug reports and adb
+        // logcat, and these lines name servers, addresses and apps' destinations.
+        if (BuildConfig.DEBUG) Log.i("ovpn-vless", line)
         synchronized(lines) {
             lines.addLast(line.trimEnd())
             while (lines.size > MAX_LINES) lines.removeFirst()
