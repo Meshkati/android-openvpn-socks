@@ -33,13 +33,25 @@ type tunnelNet struct {
 	stack    *stack.Stack
 	hasV4    bool
 	hasV6    bool
+	dns      []netip.Addr // the servers resolver asks, inside the tunnel
 	resolver *net.Resolver
+}
+
+// fallbackDNS answers lookups inside the tunnel when the OpenVPN server
+// pushes no DNS servers. The system resolver is never used: the app is
+// excluded from its own VPN, so it would ask the Wi-Fi or mobile network's
+// resolver, outside the tunnel, which names the VLESS server in the clear.
+var fallbackDNS = []netip.Addr{
+	netip.MustParseAddr("1.1.1.1"),
+	netip.MustParseAddr("8.8.8.8"),
+	netip.MustParseAddr("2606:4700:4700::1111"),
+	netip.MustParseAddr("2001:4860:4860::8888"),
 }
 
 // newTunnelNet attaches a gVisor stack to fd, which must carry raw IP packets
 // (one packet per read/write), configured with the addresses the OpenVPN
 // server assigned. DNS lookups go to dns through the tunnel; with no DNS
-// servers the system resolver is used.
+// servers, to fallbackDNS through the tunnel.
 func newTunnelNet(fd int, mtu uint32, addrs []netip.Prefix, dns []netip.Addr) (*tunnelNet, error) {
 	if len(addrs) == 0 {
 		return nil, errors.New("tunnel has no IP address")
@@ -86,20 +98,32 @@ func newTunnelNet(fd int, mtu uint32, addrs []netip.Prefix, dns []netip.Addr) (*
 	}
 	s.SetRouteTable(routes)
 
-	t.resolver = net.DefaultResolver
-	if len(dns) > 0 {
-		var next atomic.Uint32
-		t.resolver = &net.Resolver{
-			PreferGo: true,
-			// The address picked from resolv.conf is ignored: queries always go
-			// to the tunnel's DNS servers, rotating between them.
-			Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
-				server := dns[int(next.Add(1)-1)%len(dns)]
-				return t.dialIP(ctx, network, server.Unmap(), 53)
-			},
-		}
+	if len(dns) == 0 {
+		dns = t.usable(fallbackDNS)
+	}
+	t.dns = dns
+	var next atomic.Uint32
+	t.resolver = &net.Resolver{
+		PreferGo: true,
+		// The address picked from resolv.conf is ignored: queries always go
+		// to the tunnel's DNS servers, rotating between them.
+		Dial: func(ctx context.Context, network, _ string) (net.Conn, error) {
+			server := dns[int(next.Add(1)-1)%len(dns)]
+			return t.dialIP(ctx, network, server.Unmap(), 53)
+		},
 	}
 	return t, nil
+}
+
+// usable keeps the addresses of a family the tunnel has an address in.
+func (t *tunnelNet) usable(addrs []netip.Addr) []netip.Addr {
+	var out []netip.Addr
+	for _, a := range addrs {
+		if (a.Is4() && t.hasV4) || (a.Is6() && t.hasV6) {
+			out = append(out, a)
+		}
+	}
+	return out
 }
 
 // DialContext dials a "tcp" or "udp" address (host may be a domain name)
@@ -122,13 +146,10 @@ func (t *tunnelNet) DialContext(ctx context.Context, network, address string) (n
 		if err != nil {
 			return nil, fmt.Errorf("resolve %s: %w", host, err)
 		}
-		for _, ip := range found {
-			ip = ip.Unmap()
-			if (ip.Is4() && t.hasV4) || (ip.Is6() && t.hasV6) {
-				ips = append(ips, ip)
-			}
+		for i := range found {
+			found[i] = found[i].Unmap()
 		}
-		if len(ips) == 0 {
+		if ips = t.usable(found); len(ips) == 0 {
 			return nil, fmt.Errorf("resolve %s: no address usable inside the tunnel", host)
 		}
 	}

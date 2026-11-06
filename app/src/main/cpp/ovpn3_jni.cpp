@@ -112,7 +112,11 @@ public:
     }
 
     void on_log(const std::string &line) override {
+#ifndef NDEBUG
+        // Debug builds only, like VpnState.log: in a release build these lines
+        // (servers, pushed addresses) would end up in bug reports.
         __android_log_write(ANDROID_LOG_INFO, "ovpn3", line.c_str());
+#endif
         JNIEnv *env = env_for_thread();
         if (!env)
             return;

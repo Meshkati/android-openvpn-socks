@@ -161,3 +161,53 @@ func TestLinkWarnings(t *testing.T) {
 		}
 	}
 }
+
+func TestPastedConfigListeners(t *testing.T) {
+	tun := `{"protocol": "tun", "settings": {"name": "xray0"}}`
+	cases := []struct {
+		name, inbound string
+		wantErr       bool
+		wantWarnings  int
+	}{
+		{"tun only", tun, false, 0},
+		{"no listen means every network", `{"tag": "socks-in", "protocol": "socks", "port": 10808}`, true, 0},
+		{"all addresses", `{"protocol": "socks", "listen": "0.0.0.0", "port": 10808}`, true, 0},
+		{"a LAN address", `{"protocol": "http", "listen": "192.168.1.20", "port": 8080}`, true, 0},
+		{"loopback", `{"protocol": "socks", "listen": "127.0.0.1", "port": 10808}`, false, 1},
+		{"localhost", `{"protocol": "socks", "listen": "localhost", "port": 10808}`, false, 1},
+		{"IPv6 loopback", `{"protocol": "socks", "listen": "::1", "port": 10808}`, false, 1},
+		{"abstract unix socket", `{"protocol": "socks", "listen": "@xray"}`, false, 1},
+		{"unix socket file", `{"protocol": "socks", "listen": "/data/local/xray.sock"}`, false, 0},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			jc, err := serial.DecodeJSONConfig(strings.NewReader(
+				`{"inbounds": [` + tun + `, ` + c.inbound + `], "outbounds": [{"protocol": "freedom"}]}`))
+			if err != nil {
+				t.Fatal(err)
+			}
+			warnings, err := checkListeners(jc)
+			if (err != nil) != c.wantErr {
+				t.Fatalf("err = %v, want error: %v", err, c.wantErr)
+			}
+			if len(warnings) != c.wantWarnings {
+				t.Fatalf("warnings = %q, want %d", warnings, c.wantWarnings)
+			}
+		})
+	}
+}
+
+func TestStartRefusesPastedConfigListeningOnTheNetwork(t *testing.T) {
+	cfg := `{"inbounds": [{"protocol": "socks", "port": 10808}], "outbounds": [{"protocol": "freedom"}]}`
+	err := Start(-1, "10.9.0.2/24", "", 1500, 0, cfg)
+	if err == nil {
+		Stop()
+		t.Fatal("Start accepted an inbound on every network")
+	}
+	if !strings.Contains(err.Error(), `inbound "socks"`) {
+		t.Fatalf("error doesn't name the inbound: %v", err)
+	}
+	if IsRunning() {
+		t.Fatal("engine running after the refusal")
+	}
+}

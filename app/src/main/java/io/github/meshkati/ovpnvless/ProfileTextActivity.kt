@@ -13,6 +13,7 @@ class ProfileTextActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        keepOffScreenshots()
         setContentView(R.layout.activity_profile_text)
         edgeToEdge(findViewById(R.id.root))
         profile = Profiles.of(this) ?: return finish() // deleted meanwhile
