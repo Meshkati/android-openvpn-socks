@@ -65,6 +65,8 @@ class MainActivity : Activity() {
     private lateinit var crashText: TextView
     private lateinit var fpBox: View
     private lateinit var fpText: TextView
+    private lateinit var nameBox: View
+    private lateinit var nameText: TextView
 
     // The profile in use, read in onStart and after switching.
     private lateinit var active: Profile
@@ -117,6 +119,8 @@ class MainActivity : Activity() {
         crashText = findViewById(R.id.crash_text)
         fpBox = findViewById(R.id.fp_box)
         fpText = findViewById(R.id.fp_text)
+        nameBox = findViewById(R.id.name_box)
+        nameText = findViewById(R.id.name_text)
 
         toggle.setOnClickListener { onToggle() }
         checkIp.setOnClickListener { ipVia?.let(IpCheck::start) }
@@ -153,6 +157,8 @@ class MainActivity : Activity() {
         }
 
         findViewById<View>(R.id.fp_fix).setOnClickListener { useSafeFingerprint() }
+        findViewById<View>(R.id.name_use).setOnClickListener { checkServerByName() }
+        findViewById<View>(R.id.name_dismiss).setOnClickListener { VpnState.setNameCheckOffer(null) }
         findViewById<View>(R.id.fp_keep).setOnClickListener {
             active.keptFingerprint = active.vless
             render()
@@ -375,6 +381,21 @@ class MainActivity : Activity() {
         showCrash()
     }
 
+    /** The name to offer checking the server by, for the profile in use ([ServerNameCheck]). */
+    private fun nameCheckName(failure: Failure?): String? {
+        val offer = VpnState.nameCheckOffer ?: return null
+        if (failure != Failure.CERTIFICATE || offer.profileId != active.id) return null
+        return offer.name.takeUnless { ServerNameCheck.hasNameCheck(active.ovpn) }
+    }
+
+    private fun checkServerByName() {
+        val name = nameCheckName(Failure.CERTIFICATE) ?: return
+        active.ovpn = ServerNameCheck.apply(active.ovpn, name)
+        profile = ProfileInfo.parse(active.ovpn)
+        VpnState.setNameCheckOffer(null) // also redraws
+        Toast.makeText(this, getString(R.string.name_check_added, name), Toast.LENGTH_LONG).show()
+    }
+
     /** Rewrites the saved link's fp= ([Fingerprint]). A running session keeps the old one until reconnected. */
     private fun useSafeFingerprint() {
         active.vless = Fingerprint.fix(active.vless)
@@ -456,6 +477,11 @@ class MainActivity : Activity() {
         }
         fpBox.visibility = if (fp != null) View.VISIBLE else View.GONE
         if (fp != null) fpText.text = getString(R.string.fp_warning_help, fp)
+
+        // The server's certificate failed the check the app added: offer to check it by name
+        val name = nameCheckName(failure)
+        nameBox.visibility = if (name != null) View.VISIBLE else View.GONE
+        if (name != null) nameText.text = getString(R.string.name_check_help, name)
 
         // Authenticator code and connected note
         otpBox.visibility =

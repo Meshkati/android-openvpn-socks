@@ -527,7 +527,8 @@ learn the user's real IP and that they use this app.
   fetches a file through the TUN.
 * `hosttest/profile_text_test.cpp` (CMake target `profile_text_test`, no OpenVPN 3
   needed) checks the `.ovpn` rewrites: `tls-version-min`, `ns-cert-type`, and the
-  added `remote-cert-tls server`.
+  added `remote-cert-tls server`. The app's unit tests check which OpenVPN 3 log lines
+  lead to the **Check by name** offer, and the line it adds.
 
 ## Status and limitations
 
@@ -566,12 +567,21 @@ carries all traffic. whatismyip.com in Chrome shows the VLESS exit for IPv4 and
   the profile's CA as the server's: on a server whose users get client certificates from
   that CA, any of them could pose as the server. The app now uses 3.11.8, which enforces
   it. And since OpenVPN 3 checks nothing beyond the CA unless the profile asks, a profile
-  with none of `remote-cert-tls`, `remote-cert-eku`, `verify-x509-name` or
-  `peer-fingerprint` gets `remote-cert-tls server` (`profile_text.hpp`), as Easy-RSA and
-  Access Server certificates allow; the log says so. A PKI whose server certificate lacks
-  the TLS server usage can put `verify-x509-name <server name> name` in the profile
-  instead. `ns-cert-type server`, which OpenVPN 3 with mbed TLS 3 can't check, is
-  rewritten to `remote-cert-tls server`.
+  with none of `remote-cert-tls`, `remote-cert-eku` or `verify-x509-name` gets
+  `remote-cert-tls server` (`profile_text.hpp`), as Easy-RSA and Access Server
+  certificates allow; the log says so. `peer-fingerprint` doesn't count: OpenVPN 3
+  implements it only with OpenSSL, and ignores it with mbed TLS, which the app uses.
+  `ns-cert-type server`, which OpenVPN 3 with mbed TLS 3 can't check, is rewritten to
+  `remote-cert-tls server`.
+* **Check by name instead.** If the server's certificate isn't marked for TLS server use,
+  the check the app added refuses it. The home screen then offers **Check by name**,
+  showing the name in the certificate the server presented. It adds
+  `verify-x509-name <name> name` to the profile, which drops the added check but still
+  checks the server: another client's certificate from the same CA has a different
+  name, and only the CA can issue one with the server's (`ServerNameCheck.kt`). Use it
+  only for a name you know: a server posing as yours at that moment would show its own.
+  A profile that has `remote-cert-tls server` itself gets no offer, since OpenVPN 2.x
+  refuses that server too.
 * **Authenticator codes (`static-challenge`).** The app has a one-time code field. The
   code goes to OpenVPN 3 as `ProvideCreds.response` (sent as
   `SCRV1:<password>:<code>`), is never stored, and is cleared after each Connect.

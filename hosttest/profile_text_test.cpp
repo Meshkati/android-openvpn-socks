@@ -30,12 +30,15 @@ int main() {
     // Profiles that already check the server are left as they are.
     for (const char *line : {"remote-cert-tls server", "verify-x509-name vpn.example.com name",
                              "remote-cert-eku \"TLS Web Server Authentication\"",
-                             "peer-fingerprint AB:CD", "  remote-cert-tls server"}) {
+                             "  remote-cert-tls server"}) {
         std::string q = "client\n" + std::string(line) + "\nremote vpn.example.com 1194\n";
         expect(check(q, done) == q && !done.added, line);
     }
-    std::string fp = "client\n<peer-fingerprint>\nAB:CD:EF\n</peer-fingerprint>\n";
-    expect(check(fp, done) == fp && !done.added, "inline <peer-fingerprint> counts");
+    // peer-fingerprint: OpenVPN 3 ignores it with mbed TLS, so it checks nothing here.
+    for (const std::string &q : {std::string("client\npeer-fingerprint AB:CD\n"),
+                                 std::string("client\n<peer-fingerprint>\nAB:CD:EF\n</peer-fingerprint>\n")}) {
+        expect(check(q, done) == q + "remote-cert-tls server\n" && done.added, "peer-fingerprint doesn't count");
+    }
 
     // ns-cert-type server becomes remote-cert-tls server; CRLF kept.
     expect(check("client\r\nns-cert-type server\r\n", done) == "client\r\nremote-cert-tls server\r\n",

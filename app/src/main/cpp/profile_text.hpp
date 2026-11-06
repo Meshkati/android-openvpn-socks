@@ -45,17 +45,19 @@ struct ServerCertCheck {
 // profile's CA, unless the profile asks for more. On a server where users
 // get client certificates from the same CA, any of them could then pose as
 // the server. So a profile that sets none of the usual checks
-// (remote-cert-tls, remote-cert-eku, verify-x509-name, peer-fingerprint) gets
+// (remote-cert-tls, remote-cert-eku, verify-x509-name) gets
 // "remote-cert-tls server": the certificate must be marked for TLS server
 // use (extended key usage serverAuth), as Easy-RSA and Access Server make
-// them. A PKI whose server certificate isn't can use verify-x509-name.
+// them. A PKI whose server certificate isn't can use verify-x509-name; the
+// app offers to add it when this check fails (ServerNameCheck.kt).
 //
 // "ns-cert-type server", the old form of that check, is rewritten to
 // "remote-cert-tls server": OpenVPN 3 with mbed TLS 3 can't check it, and
 // refuses the profile (3.11.8) or failed every handshake (before).
 //
 // remote-cert-ku alone doesn't count: client certificates usually have the
-// same key usage bits as the server's.
+// same key usage bits as the server's. Nor does peer-fingerprint: OpenVPN 3
+// implements it only with OpenSSL, and with mbed TLS, as here, ignores it.
 inline std::string require_server_cert_check(const std::string &profile, ServerCertCheck &done) {
     done = {};
     std::string out;
@@ -78,14 +80,12 @@ inline std::string require_server_cert_check(const std::string &profile, ServerC
         } else if (directive.size() > 2 && directive.front() == '<' && directive.back() == '>' &&
                    directive[1] != '/') {
             block = directive.substr(1, directive.size() - 2);
-            if (block == "peer-fingerprint")
-                has_check = true;
         } else if (directive == "ns-cert-type" && arg == "server") {
             line = "remote-cert-tls server";
             done.ns_cert_type_rewritten = true;
             has_check = true;
         } else if (directive == "remote-cert-tls" || directive == "remote-cert-eku" ||
-                   directive == "verify-x509-name" || directive == "peer-fingerprint") {
+                   directive == "verify-x509-name") {
             has_check = true;
         }
         out += line;

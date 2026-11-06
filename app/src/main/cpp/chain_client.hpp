@@ -194,7 +194,7 @@ public:
         if (cert_check.ns_cert_type_rewritten)
             listener_.on_log("profile has ns-cert-type server, which OpenVPN 3 with mbed TLS 3 "
                              "can't check; using remote-cert-tls server instead");
-        if (cert_check.added)
+        if (cert_check.added)  // ServerNameCheck.ADDED_LOG matches the start of this line
             listener_.on_log("profile doesn't check the server's certificate beyond its CA, so "
                              "another client's certificate could pose as the server; added "
                              "remote-cert-tls server (use verify-x509-name for a server certificate "
