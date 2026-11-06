@@ -9,6 +9,7 @@ import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import android.view.View
 import android.view.WindowInsets
+import android.view.WindowManager
 import kotlin.math.max
 
 /** Log lines, one per line, coloured by [LogLines] source; errors in red. */
@@ -29,6 +30,15 @@ fun coloredLog(context: Context, lines: List<String>): CharSequence {
         out.setSpan(ForegroundColorSpan(context.getColor(color)), start, out.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     }
     return out
+}
+
+/**
+ * For screens that show a secret (the .ovpn, the password, the VLESS link):
+ * no screenshots or screen recordings of them, and a blank thumbnail in the
+ * recent apps.
+ */
+fun Activity.keepOffScreenshots() {
+    window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
 }
 
 /** A drawable from the theme, e.g. android.R.attr.selectableItemBackground. */

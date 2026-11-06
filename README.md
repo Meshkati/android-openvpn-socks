@@ -301,7 +301,12 @@ the route to set it up for that profile; tap the profile to switch (see [Profile
    UDP ASSOCIATE.
    You can also paste a full Xray JSON config instead; it must contain a `tun` inbound.
    The VLESS host may be a name that only resolves inside the OpenVPN network. It is
-   resolved with the DNS servers OpenVPN pushes. The screen shows what it read from the
+   resolved with the DNS servers OpenVPN pushes; if it pushes none, with `1.1.1.1` and
+   `8.8.8.8` inside the tunnel, never with the phone's own resolver.
+   In a pasted JSON config, an inbound that listens beyond the phone (no `listen`, which
+   Xray takes as `0.0.0.0`, or a LAN address) is refused: anyone on the same Wi-Fi could
+   use it as a proxy. One on `127.0.0.1` gets a warning in the log, since any app on the
+   phone can use it, and through it see the VLESS exit. The screen shows what it read from the
    link (server, port, transport, security) so you can check it.
    A TLS link with `fp=randomized` or `fp=randomizednoalpn` gets a warning, here and on
    the home screen, with a button that changes it to `fp=chrome`. Those fingerprints can
@@ -431,9 +436,11 @@ shows its notice too.
 * The app only reads `api.github.com/repos/Meshkati/android-openvpn-socks/releases/latest`
   over HTTPS. The request carries no account, device or settings, only a
   `User-Agent: ovpnvless/<version> (Android)` header, which GitHub requires. GitHub sees
-  the phone's IP address. With VLESS the app is excluded from its own VPN, so this
-  request goes over the normal network, connected or not. With OpenVPN only it goes
-  through OpenVPN while connected.
+  the IP address the request comes from. With VLESS connected, the app is excluded from
+  its own VPN, so the request is handed to Xray (`engine.Fetch`) and leaves through
+  VLESS like apps' traffic; while a VLESS session is connecting or disconnecting there
+  is no check, since it would show GitHub the phone's real IP. With OpenVPN only it goes
+  through OpenVPN while connected. With the VPN off it goes over the normal network.
 * It never downloads or installs anything itself. The link it opens is built from the
   version number, so it always points at this repository. Android installs an update
   only if it is signed with the same key as the installed app, so an APK from
@@ -466,11 +473,19 @@ What it records, in app-private files, and only for the installed version:
   logcat, registers and memory; those are skipped. For an ANR, the main thread's stack.
 
 The report adds the app version, Android version and ABI, the phone model and which
-route was set (OpenVPN only or with VLESS). Before it is shown, the OpenVPN servers
-(every `remote`), the VLESS server and UUID, server addresses in a VLESS JSON config,
-the username, and any other UUID or IPv4 address are replaced with `[server]`, `[uuid]`
-and `[ip]`. An error message can still name something unexpected, so the user sees the
-text before sending it. The app log is never included.
+route was set (OpenVPN only or with VLESS). Before it is shown, these are replaced with
+`[server]`, `[uuid]` and `[ip]`: the OpenVPN servers (every `remote`), the OpenVPN
+username and password, the VLESS server and UUID, the link's SNI, Host, path and
+REALITY keys, a proxy's credentials, server addresses and credentials in a VLESS JSON
+config, and any other UUID or IPv4 or IPv6 address. An error message can still name
+something unexpected, so the user sees the text before sending it. The app log is never
+included.
+
+The app log (the Log screen) stays in memory and is gone when the app's process ends.
+Release builds don't write it to logcat, where it would end up in bug reports, since it
+names servers, addresses and apps' destinations. Debug builds do. **Copy** marks the
+copied log as sensitive (Android 13+), so the clipboard pop-up and keyboard suggestions
+don't show it.
 
 Why not Sentry or similar: with VLESS the app is excluded from its own VPN, so a crash
 upload would go over the normal network. The service, and anyone watching the network, would
@@ -483,6 +498,10 @@ learn the user's real IP and that they use this app.
   real Xray instance against a local HTTPS server (answer, log, bad answers, untrusted
   certificate), also through local SOCKS5 and HTTP proxies with a password, and that apps'
   DNS reaches the DoH server through the proxy.
+  On a gVisor stack standing in for the OpenVPN network, it checks that lookups stay
+  inside the tunnel when OpenVPN pushes no DNS, and that `net.DefaultResolver` does
+  too while the engine runs. It checks which pasted-config inbounds are refused, and
+  that the update check's request (`Fetch`) goes through Xray.
   It also checks that a Go panic lands in the crash file. `go test -run '^$'
   -fuzz=FuzzBuildXrayConfig -fuzztime=5m` fuzzes the link parser and Xray's config
   builder behind it for panics. The engine builds on Linux
@@ -493,9 +512,10 @@ learn the user's real IP and that they use this app.
   to status text, the choice between the two routes, how the IP check goes in each state and
   what counts as an IP in its answer, what the widgets show in each state, the version comparison and
   timing of the update check, the donation amounts, and the crash report (reading a tombstone, hiding
-  servers and addresses, cutting the GitHub link to size), that only this app's own
-  widgets and notification can make the home screen connect, and that mutated links and
-  `.ovpn` files never make the parsers throw.
+  servers and addresses, cutting the GitHub link to size), sealing the profiles'
+  secrets (round trip, tampering, a value moved to another field, another key), that
+  only this app's own widgets and notification can make the home screen connect, and
+  that mutated links and `.ovpn` files never make the parsers throw.
 * `sudo hosttest/run-e2e.sh` (Linux, needs `openvpn dnsmasq openssl python3 go cmake ninja`)
   runs the full chain on a PC. It starts an OpenVPN 2.6 server (user/pass + tls-crypt),
   a DNS server reachable only inside the tunnel, and an Xray **VLESS + REALITY + Vision**
@@ -564,7 +584,18 @@ Limitations of this minimal version:
   Static challenge (`static-challenge`, e.g. authenticator codes) works, but the code
   must be typed for each Connect, so always-on VPN cannot start such a profile.
 * With VLESS, IPv6 is blocked while connected. Everything goes over IPv4 through VLESS.
-* Credentials are stored unencrypted in app-private SharedPreferences, one file per profile.
+* Profiles are kept in app-private SharedPreferences, one file per profile. The fields
+  that hold secrets (the `.ovpn`, which can contain private and `tls-crypt` keys, the
+  username and password, and the VLESS link) are sealed with AES-256-GCM under a key in
+  the Android Keystore (`Secrets.kt`), which never leaves it. A copy of the files alone
+  doesn't give them away. Root on the running phone can still use the key, as the app
+  does. The key needs no screen lock, so always-on VPN can start at boot. Values saved
+  by older versions are sealed the first time they are read. Nothing is backed up or
+  moved to a new phone (`allowBackup="false"`, and `data_extraction_rules.xml` for
+  Android 12+ device-to-device transfers). If the key is ever lost, the sealed fields
+  read as empty and need to be entered again.
+* The OpenVPN, VLESS and `.ovpn` text screens can't be screenshotted or recorded
+  (`FLAG_SECURE`), and show blank in the recent apps.
 * With VLESS, apps' DNS is fixed to `1.1.1.1` (carried over VLESS). There are no routing
   rules or per-app selection; everything except this app goes through the chain.
 * With VLESS, OpenVPN `route`/`redirect-gateway` options are ignored. Only Xray uses the
@@ -582,10 +613,11 @@ VLESS. Check these before relying on the app:
   `adb shell 'cat /proc/net/tcp /proc/net/tcp6 /proc/net/udp /proc/net/udp6'` filtered
   by the app's UID (column 8), over time and across connect/reconnect, not as a single
   snapshot. One snapshot on the Pixel showed only the OpenVPN connection.
-- [ ] **VLESS hostname lookup without pushed DNS.** `engine/tunnelnet.go` falls back to
-  `net.DefaultResolver` when OpenVPN pushes no DNS servers. In this process that
-  resolver uses Wi-Fi, so the VLESS hostname would be resolved outside the tunnel.
-  Refuse to start, or use a fixed resolver inside the tunnel.
+- [x] **VLESS hostname lookup without pushed DNS.** `engine/tunnelnet.go` used to fall
+  back to `net.DefaultResolver`, which in this process asks Wi-Fi. It now asks `1.1.1.1`
+  and `8.8.8.8` inside the tunnel. While the engine runs, `net.DefaultResolver` itself
+  also sends its queries into the tunnel, which covers Xray's own lookups outside the
+  dialer (its `localhost` DNS server, `freedom` domain strategies, SRV and TXT).
 - [ ] **DNS leaks.** Apps use `1.1.1.1` through VLESS. Confirm with dnsleaktest.com or
   browserleaks.com/dns that no ISP or OpenVPN-network resolver sees the queries, also
   with Android Private DNS on and with Chrome's Secure DNS.
@@ -594,15 +626,16 @@ VLESS. Check these before relying on the app:
   Check browserleaks.com/webrtc for public candidates, and compare exit IPs over
   HTTP/3 and over TCP.
 - [ ] **Pasted Xray JSON configs.** A user config with a `freedom`/direct outbound
-  exits through the OpenVPN network (the system dialer is replaced). A `dns` section
-  with `localhost` uses Go's resolver, which goes to Wi-Fi from this process. Warn about
-  or reject these.
+  exits through the OpenVPN network (the system dialer is replaced), not VLESS. A `dns`
+  section with `localhost` now resolves inside the tunnel (see above), and inbounds that
+  listen beyond the phone are refused. Still to decide: warn about `freedom` outbounds.
 - [ ] **Kill switch.** If OpenVPN drops for good or the app crashes, the VPN goes away
   and apps use Wi-Fi directly. Test with Android's Always-on VPN + "Block connections
   without VPN", and decide how that works with authenticator codes.
 - [ ] **Reconnects and network changes.** Check Wi-Fi ↔ mobile switches and OpenVPN
-  `ping-restart`: `onTun` rebuilds the TUN and restarts the engine, so look for windows
-  where traffic is not carried, and check that nothing falls back to the real network.
+  `ping-restart`: `onTun` rebuilds the TUN and restarts the engine. It now builds the
+  new TUN before closing the old one, so Android hands apps' traffic over without a
+  moment of no VPN. Check on a phone that nothing falls back to the real network.
 - [ ] **OpenVPN only on a phone.** Try a `redirect-gateway` profile and a split one
   (only `route`s): apps outside the routes should use Wi-Fi directly, the pushed DNS
   should be used, IPv6 should be blocked when the server sets up none, and a

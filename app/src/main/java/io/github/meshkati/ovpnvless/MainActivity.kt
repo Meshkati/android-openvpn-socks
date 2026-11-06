@@ -355,7 +355,7 @@ class MainActivity : Activity() {
         )
         // Every profile's servers, not only the one in use: the log may be from any of them.
         val secrets = CrashReport.secrets(
-            Profiles.all(this).map { CrashReport.Setup(it.ovpn, it.vless, it.username) }
+            Profiles.all(this).map { CrashReport.Setup(it.ovpn, it.vless, it.username, it.password) }
         )
         val title = CrashReport.title(crash, app)
         val body = CrashReport.body(crash, device, secrets)

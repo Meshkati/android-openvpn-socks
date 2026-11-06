@@ -9,6 +9,9 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	xnet "github.com/xtls/xray-core/common/net"
+	"github.com/xtls/xray-core/infra/conf"
 )
 
 // BuildXrayConfig turns a vless://, socks:// or http(s):// link into a
@@ -292,4 +295,47 @@ func vlessOutbound(link string) (map[string]any, error) {
 		},
 		"streamSettings": stream,
 	}, nil
+}
+
+// checkListeners looks at the inbounds of a pasted Xray JSON config. One
+// that listens beyond this phone (Xray's default "listen" is 0.0.0.0) is an
+// open proxy into the VLESS server for anyone on the same Wi-Fi, and the app
+// is excluded from its own VPN, so it really is reachable there: that is an
+// error. One on 127.0.0.1 is a warning: any app on the phone can use it, also
+// to learn the VLESS exit address, whatever the user meant it for.
+func checkListeners(c *conf.Config) (warnings []string, err error) {
+	for _, in := range c.InboundConfigs {
+		name := in.Tag
+		if name == "" {
+			name = in.Protocol
+		}
+		hasPort := in.PortList != nil && len(in.PortList.Range) > 0
+		listen := in.ListenOn
+		switch {
+		case listen == nil || listen.Address == nil:
+			if hasPort {
+				return nil, fmt.Errorf("inbound %q has no \"listen\", so Xray listens on every network: "+
+					"devices on the same Wi-Fi could use it; set \"listen\": \"127.0.0.1\" or remove it", name)
+			}
+			// No port either: the tun inbound.
+		case listen.Family().IsDomain() && strings.HasPrefix(listen.Domain(), "/"):
+			// A unix socket file: only apps that can open its directory reach it.
+		case isLocal(listen.Address):
+			warnings = append(warnings, fmt.Sprintf("inbound %q listens on %s: "+
+				"any app on this phone can use it and see the VLESS server's exit address", name, listen))
+		default:
+			return nil, fmt.Errorf("inbound %q listens on %s, beyond this phone: "+
+				"devices on the same network could use it; set \"listen\": \"127.0.0.1\" or remove it", name, listen)
+		}
+	}
+	return warnings, nil
+}
+
+// isLocal: reachable from this phone only, by any app. "@name" is an
+// abstract unix socket, which every app can connect to.
+func isLocal(a xnet.Address) bool {
+	if a.Family().IsDomain() {
+		return strings.EqualFold(a.Domain(), "localhost") || strings.HasPrefix(a.Domain(), "@")
+	}
+	return a.IP().IsLoopback()
 }
