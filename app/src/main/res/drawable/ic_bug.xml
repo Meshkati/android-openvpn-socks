@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Body -->
+    <path
+        android:pathData="M8,10a4,4 0,0 1,8,0v5a4,4 0,0 1,-8,0z"
+        android:strokeWidth="2"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- Head and feelers -->
+    <path
+        android:pathData="M9.5,6.5l-1.5,-2.5M14.5,6.5l1.5,-2.5"
+        android:strokeWidth="2"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- Legs -->
+    <path
+        android:pathData="M8,12h-4M16,12h4M8,9l-3,-2M16,9l3,-2M8,16l-3,2.5M16,16l3,2.5"
+        android:strokeWidth="2"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- Middle line -->
+    <path
+        android:pathData="M12,11v7"
+        android:strokeWidth="2"
+        android:strokeColor="#FF000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

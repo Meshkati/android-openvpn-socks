@@ -166,6 +166,18 @@
     <string name="crash_route_vless">OpenVPN → VLESS</string>
     <string name="crash_route_openvpn">OpenVPN only</string>
 
+    <!-- Bug report (BugReportActivity) -->
+    <string name="bug_title">Report a problem</string>
+    <string name="bug_help">Report it while it\'s happening, before you close the app: the report below was taken when you opened this screen. It holds the VPN\'s state, what Android says about power saving and networks, and the app log. Servers, UUIDs, usernames, passwords and IP addresses are hidden. Nothing is sent until you send it.</string>
+    <string name="bug_description_label">What happened? (optional)</string>
+    <string name="bug_description_hint">E.g. after the phone was in battery saver, it said Connected but nothing loaded, and Disconnect did nothing</string>
+    <string name="bug_preview_label">Report, taken at %1$s</string>
+    <string name="bug_github">Open GitHub issue</string>
+    <string name="bug_copy">Copy report</string>
+    <string name="bug_copied">Report copied</string>
+    <string name="bug_cut_note">The full report did not fit in the link and was copied to your clipboard: paste it into this issue, here or as a comment.</string>
+    <string name="bug_cut_toast">The report was too long for the link. The full report is on your clipboard: paste it into the issue.</string>
+
     <!-- OpenVPN config screen (the .ovpn of a profile) -->
     <string name="openvpn_title">OpenVPN config</string>
     <string name="profile_none">No config yet</string>

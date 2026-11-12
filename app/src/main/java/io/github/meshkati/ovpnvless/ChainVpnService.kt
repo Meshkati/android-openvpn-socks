@@ -129,6 +129,16 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // For bug reports: a request that never leads to "OpenVPN session ended" shows a stuck session.
+        if (intent?.action != ACTION_CHECK_IP) {
+            val action = intent?.action
+            val what = if (action != null && action.startsWith(ACTION_CONNECT.substringBeforeLast('.') + '.')) {
+                action.substringAfterLast('.').lowercase()
+            } else {
+                "started by Android ($action), e.g. always-on VPN"
+            }
+            VpnState.log("service: $what (session ${if (session != null) "running" else "not running"}, ${VpnState.phase})")
+        }
         when (intent?.action) {
             ACTION_DISCONNECT -> disconnect()
             ACTION_RECONNECT -> reconnect()
@@ -142,10 +152,12 @@ class ChainVpnService : VpnService(), OpenVpn3.Callbacks {
 
     override fun onRevoke() {
         // The user revoked the permission or another VPN app took over.
+        VpnState.log("service: VPN revoked (another VPN app, or turned off in Android's settings)")
         disconnect()
     }
 
     override fun onDestroy() {
+        VpnState.log("service: destroyed (session ${if (session != null) "still running" else "ended"})")
         VpnState.removeObserver(ipObserver)
         OpenVpn3.stop()
         super.onDestroy()

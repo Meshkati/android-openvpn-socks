@@ -48,6 +48,10 @@
             android:name=".LogActivity"
             android:exported="false" />
         <activity
+            android:name=".BugReportActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
             android:name=".DonateActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />

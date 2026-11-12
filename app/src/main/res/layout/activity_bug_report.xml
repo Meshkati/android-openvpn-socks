@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root"
+    style="@style/Screen">
+
+    <LinearLayout style="@style/AppBar">
+
+        <ImageButton
+            android:id="@+id/back"
+            style="@style/IconButton"
+            android:contentDescription="@string/back"
+            android:src="@drawable/ic_arrow_back" />
+
+        <TextView
+            style="@style/AppBarTitle"
+            android:layout_marginStart="4dp"
+            android:text="@string/bug_title" />
+
+        <ImageButton
+            android:id="@+id/copy"
+            style="@style/IconButton"
+            android:contentDescription="@string/bug_copy"
+            android:src="@drawable/ic_copy" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp">
+
+        <TextView
+            style="@style/Text.Help"
+            android:layout_marginTop="0dp"
+            android:text="@string/bug_help" />
+
+        <TextView
+            style="@style/Text.Label"
+            android:layout_marginTop="16dp"
+            android:labelFor="@+id/bug_description"
+            android:text="@string/bug_description_label" />
+
+        <EditText
+            android:id="@+id/bug_description"
+            style="@style/Field"
+            android:gravity="top|start"
+            android:hint="@string/bug_description_hint"
+            android:importantForAutofill="no"
+            android:inputType="textMultiLine|textCapSentences"
+            android:maxLines="5"
+            android:minLines="2" />
+
+        <TextView
+            android:id="@+id/bug_preview_label"
+            style="@style/Text.Label"
+            android:layout_marginTop="16dp" />
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_log"
+            android:clipToPadding="false"
+            android:padding="12dp">
+
+            <TextView
+                android:id="@+id/bug_preview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:lineSpacingExtra="2dp"
+                android:saveEnabled="false"
+                android:textColor="@color/log_text"
+                android:textIsSelectable="true"
+                android:textSize="11sp" />
+        </ScrollView>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="16dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/bug_share"
+                style="@style/Button.Line"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/crash_share" />
+
+            <Button
+                android:id="@+id/bug_github"
+                style="@style/Button.Fill"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="@string/bug_github" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>
