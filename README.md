@@ -377,8 +377,8 @@ server, so nothing has to be entered again.
   use while connected.
 * With more than one profile, the notification, the 4×2 widget and the OpenVPN and VLESS
   screens also name the profile. The widgets always connect the profile in use.
-* Crash reports hide the servers, UUIDs and usernames of every profile, not just the one
-  in use.
+* Crash and bug reports hide the servers, UUIDs and usernames of every profile, not just
+  the one in use.
 
 ### Widgets
 
@@ -479,13 +479,50 @@ username and password, the VLESS server and UUID, the link's SNI, Host, path and
 REALITY keys, a proxy's credentials, server addresses and credentials in a VLESS JSON
 config, and any other UUID or IPv4 or IPv6 address. An error message can still name
 something unexpected, so the user sees the text before sending it. The app log is never
-included.
+included in a crash report; a bug report (below) includes it.
 
 The app log (the Log screen) stays in memory and is gone when the app's process ends.
 Release builds don't write it to logcat, where it would end up in bug reports, since it
 names servers, addresses and apps' destinations. Debug builds do. **Copy** marks the
 copied log as sensitive (Android 13+), so the clipboard pop-up and keyboard suggestions
 don't show it.
+
+### Bug reports
+
+For problems that are not crashes, e.g. the app saying Connected when nothing gets
+through, or Disconnect doing nothing. The bug icon on the home screen opens **Report a
+problem**. The report is taken the moment the screen opens, so it shows the app as it
+was, and it is best sent before the app is closed. The user can say what happened, reads
+the whole report, then:
+
+* **Open GitHub issue** opens a new issue in the browser with the report filled in. If
+  the report is too long for the link, the oldest log lines and the list of all threads
+  are left out of it, and the full report goes on the clipboard (marked sensitive) for
+  the user to paste into the issue.
+* **Share** sends the full report with any app. The copy icon copies it.
+
+What it holds (`Diagnostics.kt`, `BugReport.kt`):
+
+* **VPN**: the app's state and the session's route, whether the VPN service is running
+  and in the foreground, whether the app still holds the VPN permission, whether Android
+  lists a VPN network, the OpenVPN protocol and the VLESS link's kind (protocol,
+  transport, security; not its server), and how long the process has been running.
+* **Power**: battery saver, doze, screen, battery optimization, background restriction,
+  app standby bucket, data saver, battery level, and how much of the time since boot the
+  phone was awake.
+* **Networks**: each network's interface, type (Wi-Fi, mobile data, VPN…) and state
+  (validated, suspended, metered). No addresses or network names.
+* **Earlier exits of the app** (Android 11+): when and why Android ended the process
+  before, e.g. killed for low memory or swiped away.
+* **Session thread**: the state and stack of OpenVPN 3's thread. A session that won't
+  disconnect shows where it is stuck. The other threads are listed too.
+* **Log**: the app log with each line's time. The app also logs, for this, when battery
+  saver or doze turns on or off, when its default network changes, and each request the
+  VPN service gets (connect, disconnect, pause…), when Android revokes the VPN and when
+  the service is destroyed.
+
+The same things are hidden as in a crash report, and apps' destinations in Xray's
+messages (`tcp:example.com:443` becomes `tcp:[host]:443`).
 
 Why not Sentry or similar: with VLESS the app is excluded from its own VPN, so a crash
 upload would go over the normal network. The service, and anyone watching the network, would
@@ -511,8 +548,9 @@ learn the user's real IP and that they use this app.
   is in use) and profile names, the mapping from OpenVPN events and errors
   to status text, the choice between the two routes, how the IP check goes in each state and
   what counts as an IP in its answer, what the widgets show in each state, the version comparison and
-  timing of the update check, the donation amounts, and the crash report (reading a tombstone, hiding
-  servers and addresses, cutting the GitHub link to size), sealing the profiles'
+  timing of the update check, the donation amounts, the crash report (reading a tombstone, hiding
+  servers and addresses, cutting the GitHub link to size) and the bug report (hiding apps'
+  destinations, keeping the newest log lines when the link is cut), sealing the profiles'
   secrets (round trip, tampering, a value moved to another field, another key), that
   only this app's own widgets and notification can make the home screen connect, and
   that mutated links and `.ovpn` files never make the parsers throw.

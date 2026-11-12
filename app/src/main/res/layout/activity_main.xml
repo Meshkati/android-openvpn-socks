@@ -18,6 +18,12 @@
             android:src="@drawable/ic_coffee" />
 
         <ImageButton
+            android:id="@+id/open_bug_report"
+            style="@style/IconButton"
+            android:contentDescription="@string/bug_title"
+            android:src="@drawable/ic_bug" />
+
+        <ImageButton
             android:id="@+id/open_log"
             style="@style/IconButton"
             android:contentDescription="@string/log"

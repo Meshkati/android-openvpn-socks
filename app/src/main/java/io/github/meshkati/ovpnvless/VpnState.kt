@@ -10,7 +10,7 @@ object VpnState {
 
     private const val MAX_LINES = 400
     private val main = Handler(Looper.getMainLooper())
-    private val lines = ArrayDeque<String>()
+    private val lines = ArrayDeque<BugReport.LogEntry>()
 
     // Only touched on the main thread.
     private val observers = mutableListOf<() -> Unit>()
@@ -83,13 +83,16 @@ object VpnState {
         // logcat, and these lines name servers, addresses and apps' destinations.
         if (BuildConfig.DEBUG) Log.i("ovpn-vless", line)
         synchronized(lines) {
-            lines.addLast(line.trimEnd())
+            lines.addLast(BugReport.LogEntry(System.currentTimeMillis(), line.trimEnd()))
             while (lines.size > MAX_LINES) lines.removeFirst()
         }
         notifyObservers()
     }
 
-    fun logLines(): List<String> = synchronized(lines) { lines.toList() }
+    fun logLines(): List<String> = synchronized(lines) { lines.map { it.line } }
+
+    /** The log with each line's time, for a bug report ([BugReport]). */
+    fun logEntries(): List<BugReport.LogEntry> = synchronized(lines) { lines.toList() }
 
     /** Adds a UI observer; it is called on the main thread, once right away. */
     fun addObserver(o: () -> Unit) {

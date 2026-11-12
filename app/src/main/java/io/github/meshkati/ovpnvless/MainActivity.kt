@@ -27,6 +27,7 @@ import android.widget.Toast
  * switch: off, or with no VLESS server saved, the app connects with OpenVPN
  * only. A card checks the public IP ([IpCheck]), the way apps' traffic goes
  * now, and shows its log. Below, a notice when GitHub has a newer release.
+ * The app bar's bug icon opens a bug report ([BugReportActivity]).
  */
 class MainActivity : Activity() {
 
@@ -144,6 +145,9 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.view_log).setOnClickListener(openLog)
         findViewById<View>(R.id.open_donate).setOnClickListener {
             startActivity(Intent(this, DonateActivity::class.java))
+        }
+        findViewById<View>(R.id.open_bug_report).setOnClickListener {
+            startActivity(Intent(this, BugReportActivity::class.java))
         }
         findViewById<View>(R.id.open_about).setOnClickListener {
             startActivity(Intent(this, AboutActivity::class.java))
@@ -349,22 +353,9 @@ class MainActivity : Activity() {
      */
     private fun sendCrash(share: Boolean) {
         val crash = Crashes.pending(this) ?: return showCrash()
-        val app = BuildConfig.VERSION_NAME
-        val device = CrashReport.Device(
-            app = app,
-            android = "${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}), ${Build.SUPPORTED_ABIS.firstOrNull().orEmpty()}",
-            model = "${Build.MANUFACTURER} ${Build.MODEL}",
-            route = getString(
-                if (Route.choose(vless, useVless) == Route.VIA_VLESS) R.string.crash_route_vless
-                else R.string.crash_route_openvpn
-            ),
-        )
-        // Every profile's servers, not only the one in use: the log may be from any of them.
-        val secrets = CrashReport.secrets(
-            Profiles.all(this).map { CrashReport.Setup(it.ovpn, it.vless, it.username, it.password) }
-        )
-        val title = CrashReport.title(crash, app)
-        val body = CrashReport.body(crash, device, secrets)
+        val device = Diagnostics.device(this, Route.choose(vless, useVless))
+        val title = CrashReport.title(crash, device.app)
+        val body = CrashReport.body(crash, device, Diagnostics.secrets(this))
         val intent = if (share) {
             Intent.createChooser(
                 Intent(Intent.ACTION_SEND).setType("text/plain")

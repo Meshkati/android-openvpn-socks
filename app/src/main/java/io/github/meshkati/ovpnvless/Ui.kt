@@ -1,9 +1,13 @@
 package io.github.meshkati.ovpnvless
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipDescription
+import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.drawable.Drawable
 import android.os.Build
+import android.os.PersistableBundle
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
@@ -30,6 +34,19 @@ fun coloredLog(context: Context, lines: List<String>): CharSequence {
         out.setSpan(ForegroundColorSpan(context.getColor(color)), start, out.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     }
     return out
+}
+
+/**
+ * Puts the log or a report on the clipboard. It names servers and addresses
+ * (or did, before they were hidden): marked sensitive, so Android 13+ shows no
+ * preview of it in the clipboard's pop-up or the keyboard's suggestions.
+ */
+fun copySensitive(context: Context, label: String, text: String) {
+    val clip = ClipData.newPlainText(label, text)
+    if (Build.VERSION.SDK_INT >= 33) {
+        clip.description.extras = PersistableBundle().apply { putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true) }
+    }
+    context.getSystemService(ClipboardManager::class.java).setPrimaryClip(clip)
 }
 
 /**

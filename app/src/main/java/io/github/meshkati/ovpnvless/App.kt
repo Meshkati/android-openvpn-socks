@@ -5,13 +5,15 @@ import android.content.res.Configuration
 
 /**
  * Starts the local crash reports ([Crashes]) before anything else runs, then
- * keeps the home-screen widgets ([Widgets]) in step with [VpnState].
+ * keeps the home-screen widgets ([Widgets]) in step with [VpnState] and logs
+ * power saving and network changes for bug reports ([SystemEvents]).
  */
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
         Crashes.start(this)
         VpnState.addObserver { Widgets.onVpnStateChanged(this) }
+        SystemEvents.start(this)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
